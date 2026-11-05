@@ -7,6 +7,7 @@ import { NavTab } from './components/layout/Sidebar';
 import { DashboardView } from './components/dashboard/DashboardView';
 import { LeadsView } from './components/leads/LeadsView';
 import { StudentsView } from './components/students/StudentsView';
+import { CoursesView } from './components/courses/CoursesView';
 import { TeamView } from './components/team/TeamView';
 import { BatchesView } from './components/batches/BatchesView';
 import { SettingsView } from './components/settings/SettingsView';
@@ -125,6 +126,9 @@ const MainApp: React.FC = () => {
       case 'students':
         if (role === 'super_admin' || role === 'admin') return <StudentsView key={`students-${refreshKey}`} />;
         return <DashboardView key={`students-denied-${refreshKey}`} onViewLead={handleViewLead} onViewLeadById={handleViewLeadById} onOpenCreateLead={() => setIsCreateLeadOpen(true)} onNavigateToLeads={() => setCurrentTab('leads')} />;
+      case 'courses':
+        if (role === 'super_admin' || role === 'admin') return <CoursesView key={\`courses-\${refreshKey}\`} />;
+        return <DashboardView key={\`courses-denied-\${refreshKey}\`} onViewLead={handleViewLead} onViewLeadById={handleViewLeadById} onOpenCreateLead={() => setIsCreateLeadOpen(true)} onNavigateToLeads={() => setCurrentTab('leads')} />;
       case 'team':
         if (role === 'super_admin' || role === 'admin') {
           return <TeamView key={`team-${refreshKey}`} />;
@@ -142,7 +146,8 @@ const MainApp: React.FC = () => {
           />
         );
       case 'batches':
-        return <BatchesView />;
+        if (role === 'super_admin' || role === 'admin' || role === 'trainer') return <BatchesView />;
+        return <DashboardView key={\`batches-denied-\${refreshKey}\`} onViewLead={handleViewLead} onViewLeadById={handleViewLeadById} onOpenCreateLead={() => setIsCreateLeadOpen(true)} onNavigateToLeads={() => setCurrentTab('leads')} />;
       case 'settings':
         return <SettingsView />;
       default:
