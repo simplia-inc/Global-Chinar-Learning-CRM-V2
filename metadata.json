@@ -1,0 +1,8 @@
+{
+  "name": "Global Chinar Digital Marketing School CRM",
+  "description": "Production-oriented CRM for Global Chinar Digital Marketing School. Streamlining lead management, follow-ups, and role-based staff operations with local roots and global reach.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

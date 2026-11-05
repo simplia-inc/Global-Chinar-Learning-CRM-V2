@@ -1,0 +1,22 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@layer base {
+  :root {
+    --brand-gold: #D4AF37;
+    --brand-gold-dark: #B48A1B;
+    --brand-emerald: #0D9488;
+    --brand-emerald-dark: #0F766E;
+    --brand-dark: #0B1120;
+  }
+
+  body {
+    font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  }
+
+  /* High precision tabular numerals for metrics, tables and dates */
+  .tabular-nums {
+    font-variant-numeric: tabular-nums;
+  }
+}
