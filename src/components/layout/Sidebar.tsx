@@ -9,11 +9,12 @@ import {
   GraduationCap,
   Sparkles,
   Layers,
+  GraduationCap,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { RoleBadge } from '../common/Badge';
 
-export type NavTab = 'dashboard' | 'leads' | 'team' | 'batches' | 'settings';
+export type NavTab = 'dashboard' | 'leads' | 'students' | 'team' | 'batches' | 'settings';
 
 interface SidebarProps {
   currentTab: NavTab;
@@ -51,6 +52,15 @@ export const Sidebar: React.FC<SidebarProps> = ({
         icon: Users,
       },
     ];
+
+    // Student records are available to authorised school operations roles.
+    if (role === 'super_admin' || role === 'admin') {
+      items.push({
+        id: 'students' as NavTab,
+        label: 'Students',
+        icon: GraduationCap,
+      });
+    }
 
     // Super Admin and Admin can view Staff / Team
     if (role === 'super_admin' || role === 'admin') {
