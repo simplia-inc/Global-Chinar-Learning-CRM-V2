@@ -135,6 +135,9 @@ export const leadService = {
     const client = getSupabaseClient();
     if (!client) return { data: null, error: new Error('Supabase client not initialized') };
 
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 20000);
+
     try {
       const payload: Record<string, any> = {
         full_name: leadInput.full_name.trim(),
@@ -148,21 +151,47 @@ export const leadService = {
         assigned_to: leadInput.assigned_to || null,
       };
 
-      const { data, error } = await client.from('leads').insert([payload]).select('*, course_interest:interested_course').single();
-      if (error) return { data: null, error: new Error(error.message) };
+      const { data, error } = await client
+        .from('leads')
+        .insert([payload])
+        .select('*, course_interest:interested_course')
+        .abortSignal(controller.signal)
+        .single();
 
-      if (leadInput.assigned_to && data?.id) {
-        const { data: authData } = await client.auth.getUser();
-        await client.from('lead_assignments').insert([{
-          lead_id: data.id,
-          assigned_to: leadInput.assigned_to,
-          assigned_by: authData?.user?.id || null,
-          notes: 'Initial assignment upon lead creation',
-        }]);
+      if (error) {
+        const message = controller.signal.aborted
+          ? 'Saving timed out after 20 seconds. Please check your internet connection and Supabase database/RLS policies, then refresh Leads before trying again.'
+          : error.message;
+        return { data: null, error: new Error(message) };
       }
+
+      // The lead is already saved. Record assignment history separately so a
+      // secondary history failure cannot leave the Add Lead form stuck.
+      if (leadInput.assigned_to && data?.id) {
+        void (async () => {
+          try {
+            const { data: authData } = await client.auth.getUser();
+            const { error: assignmentError } = await client.from('lead_assignments').insert([{
+              lead_id: data.id,
+              assigned_to: leadInput.assigned_to,
+              assigned_by: authData?.user?.id || null,
+              notes: 'Initial assignment upon lead creation',
+            }]);
+            if (assignmentError) console.warn('Lead saved, but assignment history failed:', assignmentError.message);
+          } catch (assignmentErr) {
+            console.warn('Lead saved, but assignment history failed:', assignmentErr);
+          }
+        })();
+      }
+
       return { data: mapLeadRow(data), error: null };
     } catch (err: any) {
-      return { data: null, error: err };
+      const message = controller.signal.aborted
+        ? 'Saving timed out after 20 seconds. Please check your internet connection and Supabase database/RLS policies, then refresh Leads before trying again.'
+        : (err?.message || 'Unable to save lead.');
+      return { data: null, error: new Error(message) };
+    } finally {
+      clearTimeout(timeoutId);
     }
   },
 
