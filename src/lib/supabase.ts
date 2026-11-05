@@ -1,10 +1,10 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
-// Environment variable names
+// Supabase credentials are injected by the deployment environment at build time.
 const ENV_URL_KEY = 'VITE_SUPABASE_URL';
 const ENV_ANON_KEY = 'VITE_SUPABASE_ANON_KEY';
 
-// Local storage keys for manual override fallback if env vars are unset or pointing to wrong project
+// Legacy browser override keys retained only as a local-development fallback.
 const STORAGE_URL_KEY = 'global_chinar_supabase_url';
 const STORAGE_ANON_KEY = 'global_chinar_supabase_anon';
 
@@ -18,18 +18,15 @@ export interface SupabaseConfigInfo {
   envHost?: string;
 }
 
-/**
- * Clean and sanitize string by trimming whitespace and stripping enclosing quotes
- */
 function sanitizeEnvValue(val?: string | null): string {
   if (!val) return '';
   return val.trim().replace(/^["']|["']$/g, '').trim();
 }
 
 /**
- * Reads credentials:
- * 1. User manual override in localStorage (if set by user to point to their real global-chinar-crm project)
- * 2. System environment variables (VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY)
+ * Prefer deployment environment variables over browser storage.
+ * This prevents stale localStorage credentials from silently redirecting
+ * the production CRM to a different Supabase project.
  */
 export function getSupabaseCredentials(): SupabaseConfigInfo {
   const envUrl = sanitizeEnvValue(import.meta.env[ENV_URL_KEY]);
@@ -46,15 +43,22 @@ export function getSupabaseCredentials(): SupabaseConfigInfo {
   let anonKey = '';
   let source: 'environment' | 'storage' | 'none' = 'none';
 
-  // Check if user explicitly configured an override in localStorage
-  if (storedUrl && storedKey) {
-    url = storedUrl;
-    anonKey = storedKey;
-    source = 'storage';
-  } else if (envUrl && envKey) {
+  // Production/deployment configuration always wins when both values exist.
+  if (envUrl && envKey) {
     url = envUrl;
     anonKey = envKey;
     source = 'environment';
+
+    // Remove legacy overrides so they cannot unexpectedly affect a later build.
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem(STORAGE_URL_KEY);
+      localStorage.removeItem(STORAGE_ANON_KEY);
+    }
+  } else if (storedUrl && storedKey) {
+    // Keep local override support only when environment variables are absent.
+    url = storedUrl;
+    anonKey = storedKey;
+    source = 'storage';
   }
 
   const isPlaceholder =
@@ -63,7 +67,7 @@ export function getSupabaseCredentials(): SupabaseConfigInfo {
     url.includes('your-project-id') ||
     anonKey.includes('your-anon-key');
 
-  const isConfigured = Boolean(!isPlaceholder && url.startsWith('http'));
+  const isConfigured = Boolean(!isPlaceholder && url.startsWith('https://'));
 
   let projectHost = '';
   let projectRef = '';
@@ -162,7 +166,7 @@ export interface SupabaseAuditResult {
 }
 
 /**
- * Performs a live audit of the Supabase connection and checks existence of required CRM tables
+ * Performs a live audit of the Supabase connection and checks existence of required CRM tables.
  */
 export async function auditSupabaseConnection(): Promise<SupabaseAuditResult> {
   const creds = getSupabaseCredentials();
