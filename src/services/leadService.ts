@@ -9,10 +9,26 @@ export interface LeadFilterOptions {
   limit?: number;
 }
 
+// The existing Supabase schema names this column "interested_course".
+// The UI keeps its existing TypeScript property name "course_interest".
+function mapLeadRow(row: any): Lead {
+  if (!row) return row;
+  return {
+    ...row,
+    course_interest: row.interested_course ?? row.course_interest ?? null,
+  } as Lead;
+}
+
+function mapLeadUpdates(updates: Partial<Lead>): Record<string, any> {
+  const payload: Record<string, any> = { ...updates };
+  if (Object.prototype.hasOwnProperty.call(payload, 'course_interest')) {
+    payload.interested_course = payload.course_interest;
+    delete payload.course_interest;
+  }
+  return payload;
+}
+
 export const leadService = {
-  /**
-   * Fetch leads with optional search and filters
-   */
   async getLeads(options: LeadFilterOptions = {}): Promise<{ data: Lead[]; error: Error | null }> {
     const client = getSupabaseClient();
     if (!client) return { data: [], error: new Error('Supabase client not initialized') };
@@ -25,7 +41,7 @@ export const leadService = {
           full_name,
           email,
           phone,
-          course_interest,
+          course_interest:interested_course,
           status,
           priority,
           source,
@@ -36,51 +52,32 @@ export const leadService = {
         `)
         .order('created_at', { ascending: false });
 
-      if (options.status && options.status !== 'all') {
-        query = query.eq('status', options.status);
-      }
-
-      if (options.priority && options.priority !== 'all') {
-        query = query.eq('priority', options.priority);
-      }
-
-      if (options.course && options.course !== 'all') {
-        query = query.eq('course_interest', options.course);
-      }
-
-      if (options.limit) {
-        query = query.limit(options.limit);
-      }
+      if (options.status && options.status !== 'all') query = query.eq('status', options.status);
+      if (options.priority && options.priority !== 'all') query = query.eq('priority', options.priority);
+      if (options.course && options.course !== 'all') query = query.eq('interested_course', options.course);
+      if (options.limit) query = query.limit(options.limit);
 
       const { data, error } = await query;
-
       if (error) {
         console.error('Error fetching leads:', error);
         return { data: [], error: new Error(error.message) };
       }
 
-      let leadsList = (data as Lead[]) || [];
-
-      // Client-side text search if needed (searches full_name, email, phone)
-      if (options.search && options.search.trim()) {
+      let leadsList = ((data as any[]) || []).map(mapLeadRow);
+      if (options.search?.trim()) {
         const q = options.search.toLowerCase().trim();
-        leadsList = leadsList.filter((lead) => {
-          const name = lead.full_name?.toLowerCase() || '';
-          const email = lead.email?.toLowerCase() || '';
-          const phone = lead.phone?.toLowerCase() || '';
-          return name.includes(q) || email.includes(q) || phone.includes(q);
-        });
+        leadsList = leadsList.filter((lead) =>
+          (lead.full_name || '').toLowerCase().includes(q) ||
+          (lead.email || '').toLowerCase().includes(q) ||
+          (lead.phone || '').toLowerCase().includes(q)
+        );
       }
-
       return { data: leadsList, error: null };
     } catch (err: any) {
       return { data: [], error: err };
     }
   },
 
-  /**
-   * Fetch single lead with assignments and follow-ups
-   */
   async getLeadById(id: string): Promise<{
     lead: Lead | null;
     assignments: LeadAssignment[];
@@ -88,46 +85,33 @@ export const leadService = {
     error: Error | null;
   }> {
     const client = getSupabaseClient();
-    if (!client) {
-      return { lead: null, assignments: [], followUps: [], error: new Error('Supabase client not initialized') };
-    }
+    if (!client) return { lead: null, assignments: [], followUps: [], error: new Error('Supabase client not initialized') };
 
     try {
-      // 1. Fetch Lead
       const { data: leadData, error: leadError } = await client
         .from('leads')
-        .select('*')
+        .select('*, course_interest:interested_course')
         .eq('id', id)
         .single();
 
-      if (leadError) {
-        return { lead: null, assignments: [], followUps: [], error: new Error(leadError.message) };
-      }
+      if (leadError) return { lead: null, assignments: [], followUps: [], error: new Error(leadError.message) };
 
-      // 2. Fetch Assignments
       const { data: assignmentsData, error: assignError } = await client
         .from('lead_assignments')
         .select('*')
         .eq('lead_id', id)
         .order('created_at', { ascending: false });
+      if (assignError) console.warn('Assignments fetch warning:', assignError.message);
 
-      if (assignError) {
-        console.warn('Assignments fetch warning:', assignError.message);
-      }
-
-      // 3. Fetch Follow-ups
       const { data: followUpsData, error: followError } = await client
         .from('follow_ups')
         .select('*')
         .eq('lead_id', id)
         .order('scheduled_at', { ascending: false });
-
-      if (followError) {
-        console.warn('Follow-ups fetch warning:', followError.message);
-      }
+      if (followError) console.warn('Follow-ups fetch warning:', followError.message);
 
       return {
-        lead: leadData as Lead,
+        lead: mapLeadRow(leadData),
         assignments: (assignmentsData as LeadAssignment[]) || [],
         followUps: (followUpsData as FollowUp[]) || [],
         error: null,
@@ -137,9 +121,6 @@ export const leadService = {
     }
   },
 
-  /**
-   * Create a new lead record
-   */
   async createLead(leadInput: {
     full_name: string;
     email?: string | null;
@@ -159,7 +140,7 @@ export const leadService = {
         full_name: leadInput.full_name.trim(),
         email: leadInput.email ? leadInput.email.trim() : null,
         phone: leadInput.phone.trim(),
-        course_interest: leadInput.course_interest || null,
+        interested_course: leadInput.course_interest || null,
         status: leadInput.status || 'new',
         priority: leadInput.priority || 'medium',
         source: leadInput.source || 'Website',
@@ -167,111 +148,68 @@ export const leadService = {
         assigned_to: leadInput.assigned_to || null,
       };
 
-      const { data, error } = await client
-        .from('leads')
-        .insert([payload])
-        .select()
-        .single();
+      const { data, error } = await client.from('leads').insert([payload]).select('*, course_interest:interested_course').single();
+      if (error) return { data: null, error: new Error(error.message) };
 
-      if (error) {
-        return { data: null, error: new Error(error.message) };
-      }
-
-      // If assigned_to is set, also create record in lead_assignments
       if (leadInput.assigned_to && data?.id) {
         const { data: authData } = await client.auth.getUser();
-        await client.from('lead_assignments').insert([
-          {
-            lead_id: data.id,
-            assigned_to: leadInput.assigned_to,
-            assigned_by: authData?.user?.id || null,
-            notes: 'Initial assignment upon lead creation',
-          },
-        ]);
+        await client.from('lead_assignments').insert([{
+          lead_id: data.id,
+          assigned_to: leadInput.assigned_to,
+          assigned_by: authData?.user?.id || null,
+          notes: 'Initial assignment upon lead creation',
+        }]);
       }
-
-      return { data: data as Lead, error: null };
+      return { data: mapLeadRow(data), error: null };
     } catch (err: any) {
       return { data: null, error: err };
     }
   },
 
-  /**
-   * Update lead details or status
-   */
-  async updateLead(
-    id: string,
-    updates: Partial<Lead>
-  ): Promise<{ data: Lead | null; error: Error | null }> {
+  async updateLead(id: string, updates: Partial<Lead>): Promise<{ data: Lead | null; error: Error | null }> {
     const client = getSupabaseClient();
     if (!client) return { data: null, error: new Error('Supabase client not initialized') };
 
     try {
       const { data, error } = await client
         .from('leads')
-        .update(updates)
+        .update(mapLeadUpdates(updates))
         .eq('id', id)
-        .select()
+        .select('*, course_interest:interested_course')
         .single();
-
-      if (error) {
-        return { data: null, error: new Error(error.message) };
-      }
-
-      return { data: data as Lead, error: null };
+      if (error) return { data: null, error: new Error(error.message) };
+      return { data: mapLeadRow(data), error: null };
     } catch (err: any) {
       return { data: null, error: err };
     }
   },
 
-  /**
-   * Assign lead to a team member
-   */
-  async assignLead(
-    leadId: string,
-    assignedToProfileId: string,
-    notes?: string
-  ): Promise<{ error: Error | null }> {
+  async assignLead(leadId: string, assignedToProfileId: string, notes?: string): Promise<{ error: Error | null }> {
     const client = getSupabaseClient();
     if (!client) return { error: new Error('Supabase client not initialized') };
 
     try {
       const { data: authData } = await client.auth.getUser();
       const currentUserId = authData?.user?.id || null;
-
-      // 1. Update lead's assigned_to column
       const { error: updateError } = await client
         .from('leads')
         .update({ assigned_to: assignedToProfileId })
         .eq('id', leadId);
+      if (updateError) return { error: new Error(updateError.message) };
 
-      if (updateError) {
-        return { error: new Error(updateError.message) };
-      }
-
-      // 2. Insert into lead_assignments audit table
-      const { error: assignError } = await client.from('lead_assignments').insert([
-        {
-          lead_id: leadId,
-          assigned_to: assignedToProfileId,
-          assigned_by: currentUserId,
-          notes: notes || null,
-        },
-      ]);
-
-      if (assignError) {
-        console.warn('Could not record assignment history:', assignError.message);
-      }
-
+      const { error: assignError } = await client.from('lead_assignments').insert([{
+        lead_id: leadId,
+        assigned_to: assignedToProfileId,
+        assigned_by: currentUserId,
+        notes: notes || null,
+      }]);
+      if (assignError) console.warn('Could not record assignment history:', assignError.message);
       return { error: null };
     } catch (err: any) {
       return { error: err };
     }
   },
 
-  /**
-   * Add a follow-up record for a lead
-   */
   async addFollowUp(payload: {
     lead_id: string;
     scheduled_at: string;
@@ -283,35 +221,21 @@ export const leadService = {
 
     try {
       const { data: authData } = await client.auth.getUser();
-
-      const { data, error } = await client
-        .from('follow_ups')
-        .insert([
-          {
-            lead_id: payload.lead_id,
-            scheduled_at: payload.scheduled_at,
-            contact_method: payload.contact_method,
-            notes: payload.notes || null,
-            status: 'pending',
-            created_by: authData?.user?.id || null,
-          },
-        ])
-        .select()
-        .single();
-
-      if (error) {
-        return { data: null, error: new Error(error.message) };
-      }
-
+      const { data, error } = await client.from('follow_ups').insert([{
+        lead_id: payload.lead_id,
+        scheduled_at: payload.scheduled_at,
+        contact_method: payload.contact_method,
+        notes: payload.notes || null,
+        status: 'pending',
+        created_by: authData?.user?.id || null,
+      }]).select().single();
+      if (error) return { data: null, error: new Error(error.message) };
       return { data: data as FollowUp, error: null };
     } catch (err: any) {
       return { data: null, error: err };
     }
   },
 
-  /**
-   * Update follow-up status (e.g. marked as completed)
-   */
   async updateFollowUpStatus(
     followUpId: string,
     status: 'completed' | 'cancelled' | 'pending' | 'overdue',
@@ -322,31 +246,16 @@ export const leadService = {
 
     try {
       const updatePayload: Record<string, any> = { status };
-      if (status === 'completed') {
-        updatePayload.completed_at = new Date().toISOString();
-      }
-      if (notes) {
-        updatePayload.notes = notes;
-      }
-
-      const { error } = await client
-        .from('follow_ups')
-        .update(updatePayload)
-        .eq('id', followUpId);
-
-      if (error) {
-        return { error: new Error(error.message) };
-      }
-
+      if (status === 'completed') updatePayload.completed_at = new Date().toISOString();
+      if (notes) updatePayload.notes = notes;
+      const { error } = await client.from('follow_ups').update(updatePayload).eq('id', followUpId);
+      if (error) return { error: new Error(error.message) };
       return { error: null };
     } catch (err: any) {
       return { error: err };
     }
   },
 
-  /**
-   * Get upcoming follow-ups
-   */
   async getUpcomingFollowUps(limit: number = 6): Promise<{ data: FollowUp[]; error: Error | null }> {
     const client = getSupabaseClient();
     if (!client) return { data: [], error: new Error('Supabase client not initialized') };
@@ -369,7 +278,7 @@ export const leadService = {
             full_name,
             phone,
             email,
-            course_interest,
+            course_interest:interested_course,
             status
           )
         `)
@@ -378,30 +287,21 @@ export const leadService = {
         .limit(limit);
 
       if (error) {
-        // If join fails due to RLS or schema, fall back to simple select
-        const fallback = await client
-          .from('follow_ups')
-          .select('*')
-          .eq('status', 'pending')
-          .order('scheduled_at', { ascending: true })
-          .limit(limit);
+        const fallback = await client.from('follow_ups').select('*').eq('status', 'pending')
+          .order('scheduled_at', { ascending: true }).limit(limit);
         return { data: (fallback.data as unknown as FollowUp[]) || [], error: null };
       }
 
       const formatted = ((data as any[]) || []).map((row) => ({
         ...row,
-        lead: Array.isArray(row.lead) ? row.lead[0] : row.lead,
+        lead: Array.isArray(row.lead) ? mapLeadRow(row.lead[0]) : mapLeadRow(row.lead),
       })) as FollowUp[];
-
       return { data: formatted, error: null };
     } catch (err: any) {
       return { data: [], error: err };
     }
   },
 
-  /**
-   * Calculate live dashboard statistics from database
-   */
   async getDashboardStats(): Promise<{ stats: DashboardStats; error: Error | null }> {
     const defaultStats: DashboardStats = {
       totalLeads: 0,
@@ -416,60 +316,33 @@ export const leadService = {
     if (!client) return { stats: defaultStats, error: new Error('Supabase client not initialized') };
 
     try {
-      // 1. Total leads count
-      const totalPromise = client
-        .from('leads')
-        .select('*', { count: 'exact', head: true });
-
-      // 2. New leads count
-      const newPromise = client
-        .from('leads')
-        .select('*', { count: 'exact', head: true })
-        .eq('status', 'new');
-
-      // 3. Contacted leads count
-      const contactedPromise = client
-        .from('leads')
-        .select('*', { count: 'exact', head: true })
-        .eq('status', 'contacted');
-
-      // 4. Pending follow-ups (Follow-up Required)
-      const followUpsPromise = client
-        .from('follow_ups')
-        .select('*', { count: 'exact', head: true })
-        .eq('status', 'pending');
-
-      // 5. Qualified leads count
-      const qualifiedPromise = client
-        .from('leads')
-        .select('*', { count: 'exact', head: true })
-        .eq('status', 'qualified');
-
-      // 6. Converted leads count
-      const convertedPromise = client
-        .from('leads')
-        .select('*', { count: 'exact', head: true })
-        .in('status', ['converted', 'enrolled']);
-
       const [totalRes, newRes, contactedRes, followUpsRes, qualifiedRes, convertedRes] = await Promise.all([
-        totalPromise,
-        newPromise,
-        contactedPromise,
-        followUpsPromise,
-        qualifiedPromise,
-        convertedPromise,
+        client.from('leads').select('*', { count: 'exact', head: true }),
+        client.from('leads').select('*', { count: 'exact', head: true }).eq('status', 'new'),
+        client.from('leads').select('*', { count: 'exact', head: true }).eq('status', 'contacted'),
+        client.from('follow_ups').select('*', { count: 'exact', head: true }).eq('status', 'pending'),
+        client.from('leads').select('*', { count: 'exact', head: true }).eq('status', 'qualified'),
+        client.from('leads').select('*', { count: 'exact', head: true }).in('status', ['converted', 'enrolled']),
       ]);
 
-      const stats: DashboardStats = {
-        totalLeads: totalRes.count || 0,
-        newLeads: newRes.count || 0,
-        contactedLeads: contactedRes.count || 0,
-        pendingFollowUps: followUpsRes.count || 0,
-        qualifiedLeads: qualifiedRes.count || 0,
-        convertedLeads: convertedRes.count || 0,
-      };
+      if (totalRes.error) return { stats: defaultStats, error: new Error(totalRes.error.message) };
+      if (newRes.error) return { stats: defaultStats, error: new Error(newRes.error.message) };
+      if (contactedRes.error) return { stats: defaultStats, error: new Error(contactedRes.error.message) };
+      if (followUpsRes.error) return { stats: defaultStats, error: new Error(followUpsRes.error.message) };
+      if (qualifiedRes.error) return { stats: defaultStats, error: new Error(qualifiedRes.error.message) };
+      if (convertedRes.error) return { stats: defaultStats, error: new Error(convertedRes.error.message) };
 
-      return { stats, error: null };
+      return {
+        stats: {
+          totalLeads: totalRes.count || 0,
+          newLeads: newRes.count || 0,
+          contactedLeads: contactedRes.count || 0,
+          pendingFollowUps: followUpsRes.count || 0,
+          qualifiedLeads: qualifiedRes.count || 0,
+          convertedLeads: convertedRes.count || 0,
+        },
+        error: null,
+      };
     } catch (err: any) {
       console.warn('Error fetching live stats:', err);
       return { stats: defaultStats, error: err };
