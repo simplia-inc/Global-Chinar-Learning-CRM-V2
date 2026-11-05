@@ -6,6 +6,7 @@ import { AppLayout } from './components/layout/AppLayout';
 import { NavTab } from './components/layout/Sidebar';
 import { DashboardView } from './components/dashboard/DashboardView';
 import { LeadsView } from './components/leads/LeadsView';
+import { StudentsView } from './components/students/StudentsView';
 import { TeamView } from './components/team/TeamView';
 import { BatchesView } from './components/batches/BatchesView';
 import { SettingsView } from './components/settings/SettingsView';
@@ -121,6 +122,9 @@ const MainApp: React.FC = () => {
             onEditLead={handleEditLead}
           />
         );
+      case 'students':
+        if (role === 'super_admin' || role === 'admin') return <StudentsView key={`students-${refreshKey}`} />;
+        return <DashboardView key={`students-denied-${refreshKey}`} onViewLead={handleViewLead} onViewLeadById={handleViewLeadById} onOpenCreateLead={() => setIsCreateLeadOpen(true)} onNavigateToLeads={() => setCurrentTab('leads')} />;
       case 'team':
         if (role === 'super_admin' || role === 'admin') {
           return <TeamView key={`team-${refreshKey}`} />;
