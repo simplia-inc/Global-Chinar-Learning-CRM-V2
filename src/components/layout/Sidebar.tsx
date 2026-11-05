@@ -9,7 +9,6 @@ import {
   GraduationCap,
   Sparkles,
   Layers,
-  GraduationCap,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { RoleBadge } from '../common/Badge';
