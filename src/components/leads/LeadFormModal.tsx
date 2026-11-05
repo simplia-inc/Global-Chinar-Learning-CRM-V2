@@ -98,6 +98,7 @@ export const LeadFormModal: React.FC<LeadFormModalProps> = ({
     setErrorMsg(null);
 
     try {
+      const saveOperation = (async () => {
       if (isEditing && initialLead) {
         const { data, error } = await leadService.updateLead(initialLead.id, {
           full_name: fullName.trim(),
@@ -137,8 +138,23 @@ export const LeadFormModal: React.FC<LeadFormModalProps> = ({
           onClose();
         }
       }
+      })();
+
+      let timeoutHandle: ReturnType<typeof setTimeout> | undefined;
+      const timeout = new Promise<never>((_, reject) => {
+        timeoutHandle = setTimeout(() => reject(new Error(
+          'The CRM did not receive a response from Supabase within 25 seconds. The save may still complete in the background. Refresh the Leads page before trying again to avoid duplicates.'
+        )), 25000);
+      });
+
+      try {
+        await Promise.race([saveOperation, timeout]);
+      } finally {
+        if (timeoutHandle) clearTimeout(timeoutHandle);
+      }
     } catch (err: any) {
-      setErrorMsg(err.message || 'Operation failed.');
+      console.error('Lead form submission failed:', err);
+      setErrorMsg(err.message || 'Operation failed. Please try again.');
     } finally {
       setSubmitting(false);
     }
