@@ -1,64 +1,53 @@
-import React from 'react';
-import { GraduationCap, Clock, Calendar, CheckCircle } from 'lucide-react';
+import React, { useCallback, useEffect, useState } from 'react';
+import { CalendarDays, Plus, RefreshCw, Users, Clock } from 'lucide-react';
+import { getSupabaseClient } from '../../lib/supabase';
 import { useAuth } from '../../context/AuthContext';
+import { Modal } from '../common/Modal';
+
+type Batch={id:string;name:string;code:string|null;course_id:string|null;start_date:string|null;end_date:string|null;schedule_text:string|null;capacity:number|null;status:'planned'|'ongoing'|'completed'|'cancelled';room_or_link:string|null;course?:{name:string}|null};
+type Course={id:string;name:string};
+type Trainer={id:string;full_name:string|null;email:string};
+const initial={name:'',code:'',course_id:'',start_date:'',end_date:'',schedule_text:'',capacity:'',room_or_link:'',status:'planned',trainer_id:''};
 
 export const BatchesView: React.FC = () => {
-  const { profile } = useAuth();
-
-  return (
-    <div className="space-y-6">
-      <div>
-        <h2 className="text-xl font-bold text-slate-900 tracking-tight">Trainer Portal & Batches</h2>
-        <p className="text-xs text-slate-500 mt-0.5">
-          Assigned training cohorts and lecture schedules for {profile?.full_name || 'Faculty Member'}.
-        </p>
-      </div>
-
-      <div className="p-6 bg-white border border-slate-200 rounded-xl shadow-xs space-y-4">
-        <div className="flex items-start gap-4">
-          <div className="w-12 h-12 rounded-xl bg-purple-50 border border-purple-100 flex items-center justify-center text-purple-700 shrink-0">
-            <GraduationCap className="w-6 h-6" />
-          </div>
-          <div>
-            <h3 className="text-sm font-semibold text-slate-900">Faculty Schedule & Cohort Access</h3>
-            <p className="text-xs text-slate-500 mt-1 max-w-xl leading-relaxed">
-              As a trainer, your access is scoped strictly to student cohorts and training sessions. Financial ledgers and administrative configurations are restricted per security policy.
-            </p>
-          </div>
-        </div>
-
-        <div className="pt-4 border-t border-slate-100 grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div className="p-4 bg-slate-50 rounded-lg border border-slate-200">
-            <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Current Program</span>
-            <h4 className="text-xs font-bold text-slate-800 mt-1">Digital Marketing Masterclass (Batch 2026-A)</h4>
-            <div className="flex items-center gap-3 text-[11px] text-slate-500 mt-2">
-              <span className="flex items-center gap-1">
-                <Clock className="w-3.5 h-3.5 text-slate-400" />
-                10:00 AM – 12:30 PM
-              </span>
-              <span className="flex items-center gap-1">
-                <Calendar className="w-3.5 h-3.5 text-slate-400" />
-                Mon, Wed, Fri
-              </span>
-            </div>
-          </div>
-
-          <div className="p-4 bg-slate-50 rounded-lg border border-slate-200">
-            <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Upcoming Program</span>
-            <h4 className="text-xs font-bold text-slate-800 mt-1">Performance Marketing & Meta Ads (Batch 2026-B)</h4>
-            <div className="flex items-center gap-3 text-[11px] text-slate-500 mt-2">
-              <span className="flex items-center gap-1">
-                <Clock className="w-3.5 h-3.5 text-slate-400" />
-                02:00 PM – 04:30 PM
-              </span>
-              <span className="flex items-center gap-1">
-                <Calendar className="w-3.5 h-3.5 text-slate-400" />
-                Weekend Special
-              </span>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
+ const {profile,user,role}=useAuth();
+ const [items,setItems]=useState<Batch[]>([]);
+ const [courses,setCourses]=useState<Course[]>([]);
+ const [trainers,setTrainers]=useState<Trainer[]>([]);
+ const [loading,setLoading]=useState(true);
+ const [error,setError]=useState('');
+ const [open,setOpen]=useState(false);
+ const [saving,setSaving]=useState(false);
+ const [form,setForm]=useState(initial);
+ const admin=role==='super_admin'||role==='admin';
+ const load=useCallback(async()=>{
+  const db=getSupabaseClient();if(!db){setError('Supabase is not configured.');setLoading(false);return;}
+  setLoading(true);setError('');
+  const [batchRes,courseRes,trainerRes]=await Promise.all([
+   db.from('school_batches').select('id,name,code,course_id,start_date,end_date,schedule_text,capacity,status,room_or_link,school_courses(name)').order('created_at',{ascending:false}),
+   db.from('school_courses').select('id,name').eq('is_active',true).order('name'),
+   admin?db.from('profiles').select('id,full_name,email').eq('role','trainer').eq('is_active',true).order('full_name'):Promise.resolve({data:[],error:null})
+  ]);
+  if(batchRes.error){setError(batchRes.error.message);setItems([]);}else setItems((batchRes.data||[]).map((b:any)=>({...b,course:b.school_courses})) as Batch[]);
+  if(courseRes.error&&admin)setError(courseRes.error.message);else setCourses((courseRes.data||[]) as Course[]);
+  if(trainerRes.error&&admin)setError(trainerRes.error.message);else setTrainers((trainerRes.data||[]) as Trainer[]);
+  setLoading(false);
+ },[admin]);
+ useEffect(()=>{void load();},[load]);
+ const save=async(e:React.FormEvent)=>{e.preventDefault();if(!admin||!user)return;const db=getSupabaseClient();if(!db)return;setSaving(true);setError('');
+  const payload={name:form.name.trim(),code:form.code.trim()||null,course_id:form.course_id||null,start_date:form.start_date||null,end_date:form.end_date||null,schedule_text:form.schedule_text.trim()||null,capacity:form.capacity?Number(form.capacity):null,room_or_link:form.room_or_link.trim()||null,status:form.status,created_by:user.id};
+  const {data,error}=await db.from('school_batches').insert(payload).select('id').single();
+  if(error){setSaving(false);setError(error.message);return;}
+  if(form.trainer_id){const {error:assignError}=await db.from('batch_trainers').insert({batch_id:data.id,trainer_id:form.trainer_id,assigned_by:user.id});if(assignError){setSaving(false);setError('Batch created, but trainer assignment failed: '+assignError.message);await load();return;}}
+  setSaving(false);setOpen(false);setForm(initial);await load();
+ };
+ const changeStatus=async(b:Batch,status:Batch['status'])=>{const db=getSupabaseClient();if(!db)return;const {error}=await db.from('school_batches').update({status}).eq('id',b.id);if(error)setError(error.message);else await load();};
+ const statusStyle=(s:string)=>s==='ongoing'?'bg-emerald-50 text-emerald-700':s==='completed'?'bg-slate-100 text-slate-600':s==='cancelled'?'bg-rose-50 text-rose-700':'bg-amber-50 text-amber-700';
+ return <div className="space-y-6">
+  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><div><p className="text-xs font-semibold uppercase tracking-[.18em] text-teal-700">Academic operations</p><h1 className="mt-1 text-2xl font-bold text-slate-900">{admin?'Batch Management':'My Teaching Batches'}</h1><p className="mt-1 text-sm text-slate-500">{admin?'Create cohorts, set schedules and allocate trainers.':`Assigned cohorts and class information for ${profile?.full_name||'trainer'}.`}</p></div><div className="flex gap-2"><button onClick={()=>void load()} disabled={loading} className="inline-flex items-center gap-2 rounded-lg border bg-white px-3 py-2 text-sm"><RefreshCw className={`h-4 w-4 ${loading?'animate-spin':''}`}/>Refresh</button>{admin&&<button onClick={()=>setOpen(true)} className="inline-flex items-center gap-2 rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white"><Plus className="h-4 w-4"/>Create batch</button>}</div></div>
+  {error&&<div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">{error}</div>}
+  <div className="grid gap-4 sm:grid-cols-3"><div className="rounded-xl border bg-white p-5"><CalendarDays className="h-5 w-5 text-teal-700"/><p className="mt-3 text-3xl font-bold">{items.length}</p><p className="text-xs text-slate-500">Visible batches</p></div><div className="rounded-xl border bg-white p-5"><p className="text-3xl font-bold text-emerald-700">{items.filter(b=>b.status==='ongoing').length}</p><p className="text-xs text-slate-500">Ongoing</p></div><div className="rounded-xl border bg-white p-5"><p className="text-3xl font-bold">{items.filter(b=>b.status==='planned').length}</p><p className="text-xs text-slate-500">Planned</p></div></div>
+  {loading?<div className="rounded-xl border bg-white p-12 text-center text-sm text-slate-500">Loading batches from Supabase…</div>:items.length===0?<div className="rounded-xl border bg-white p-12 text-center"><CalendarDays className="mx-auto h-8 w-8 text-slate-300"/><h3 className="mt-3 font-semibold text-slate-800">No batches found</h3><p className="mt-1 text-sm text-slate-500">{admin?'Create your first batch to start scheduling classes.':'No batches have been assigned to your trainer account yet.'}</p></div>:<div className="grid gap-4 lg:grid-cols-2">{items.map(b=><article key={b.id} className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm"><div className="flex items-start justify-between gap-3"><div><p className="text-xs font-medium text-teal-700">{b.code||'BATCH'}</p><h3 className="mt-1 text-lg font-semibold text-slate-900">{b.name}</h3><p className="mt-1 text-sm text-slate-500">{b.course?.name||'Course not linked'}</p></div><span className={`rounded-full px-2.5 py-1 text-xs font-medium capitalize ${statusStyle(b.status)}`}>{b.status}</span></div><div className="mt-4 grid gap-3 border-t pt-4 text-sm text-slate-600 sm:grid-cols-2"><p className="flex items-center gap-2"><CalendarDays className="h-4 w-4 text-slate-400"/>{b.start_date||'Start date pending'}{b.end_date?' – '+b.end_date:''}</p><p className="flex items-center gap-2"><Users className="h-4 w-4 text-slate-400"/>{b.capacity?b.capacity+' seats':'Capacity not set'}</p><p className="flex items-center gap-2"><Clock className="h-4 w-4 text-slate-400"/>{b.schedule_text||'Schedule pending'}</p><p className="truncate">{b.room_or_link||'Location / meeting link pending'}</p></div>{admin&&<div className="mt-4 flex flex-wrap gap-2 border-t pt-3">{(['planned','ongoing','completed','cancelled'] as const).filter(s=>s!==b.status).map(s=><button key={s} onClick={()=>void changeStatus(b,s)} className="rounded-md border px-2.5 py-1.5 text-xs capitalize hover:bg-slate-50">Mark {s}</button>)}</div>}</article>)}</div>}
+  <Modal isOpen={open} onClose={()=>setOpen(false)} title="Create training batch" subtitle="Set the cohort details and initial trainer allocation" maxWidth="2xl"><form onSubmit={save} className="space-y-4"><div><label className="mb-1 block text-sm font-medium">Batch name *</label><input required value={form.name} onChange={e=>setForm({...form,name:e.target.value})} className="w-full rounded-lg border px-3 py-2 text-sm"/></div><div className="grid gap-4 sm:grid-cols-2"><div><label className="mb-1 block text-sm font-medium">Batch code</label><input value={form.code} onChange={e=>setForm({...form,code:e.target.value})} className="w-full rounded-lg border px-3 py-2 text-sm"/></div><div><label className="mb-1 block text-sm font-medium">Course</label><select value={form.course_id} onChange={e=>setForm({...form,course_id:e.target.value})} className="w-full rounded-lg border px-3 py-2 text-sm"><option value="">Select course</option>{courses.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}</select></div></div><div className="grid gap-4 sm:grid-cols-2"><div><label className="mb-1 block text-sm font-medium">Start date</label><input type="date" value={form.start_date} onChange={e=>setForm({...form,start_date:e.target.value})} className="w-full rounded-lg border px-3 py-2 text-sm"/></div><div><label className="mb-1 block text-sm font-medium">End date</label><input type="date" value={form.end_date} onChange={e=>setForm({...form,end_date:e.target.value})} className="w-full rounded-lg border px-3 py-2 text-sm"/></div></div><div className="grid gap-4 sm:grid-cols-2"><div><label className="mb-1 block text-sm font-medium">Schedule</label><input placeholder="e.g. Mon, Wed, Fri · 8:30 PM" value={form.schedule_text} onChange={e=>setForm({...form,schedule_text:e.target.value})} className="w-full rounded-lg border px-3 py-2 text-sm"/></div><div><label className="mb-1 block text-sm font-medium">Capacity</label><input type="number" min="1" value={form.capacity} onChange={e=>setForm({...form,capacity:e.target.value})} className="w-full rounded-lg border px-3 py-2 text-sm"/></div></div><div><label className="mb-1 block text-sm font-medium">Trainer</label><select value={form.trainer_id} onChange={e=>setForm({...form,trainer_id:e.target.value})} className="w-full rounded-lg border px-3 py-2 text-sm"><option value="">Assign later</option>{trainers.map(t=><option key={t.id} value={t.id}>{t.full_name||t.email}</option>)}</select></div><div><label className="mb-1 block text-sm font-medium">Classroom / meeting link</label><input value={form.room_or_link} onChange={e=>setForm({...form,room_or_link:e.target.value})} className="w-full rounded-lg border px-3 py-2 text-sm"/></div><div className="flex justify-end gap-2 border-t pt-4"><button type="button" onClick={()=>setOpen(false)} className="rounded-lg border px-4 py-2 text-sm">Cancel</button><button disabled={saving} className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">{saving?'Creating…':'Create batch'}</button></div></form></Modal>
+ </div>;
 };
