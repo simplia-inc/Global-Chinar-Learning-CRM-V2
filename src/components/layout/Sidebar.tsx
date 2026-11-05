@@ -13,7 +13,7 @@ import {
 import { useAuth } from '../../context/AuthContext';
 import { RoleBadge } from '../common/Badge';
 
-export type NavTab = 'dashboard' | 'leads' | 'students' | 'team' | 'batches' | 'settings';
+export type NavTab = 'dashboard' | 'leads' | 'students' | 'courses' | 'team' | 'batches' | 'settings';
 
 interface SidebarProps {
   currentTab: NavTab;
@@ -59,6 +59,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
         label: 'Students',
         icon: GraduationCap,
       });
+    }
+
+    // Academic catalogue and cohort operations are managed by school admins.
+    if (role === 'super_admin' || role === 'admin') {
+      items.push({ id: 'courses' as NavTab, label: 'Courses', icon: Layers });
+      items.push({ id: 'batches' as NavTab, label: 'Batches', icon: CalendarCheck });
     }
 
     // Super Admin and Admin can view Staff / Team
