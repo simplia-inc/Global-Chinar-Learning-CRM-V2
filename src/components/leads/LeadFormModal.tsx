@@ -89,6 +89,8 @@ export const LeadFormModal: React.FC<LeadFormModalProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (submitting) return;
+
     if (!fullName.trim() || !phone.trim()) {
       setErrorMsg('Full Name and Phone Number are required.');
       return;
@@ -98,63 +100,37 @@ export const LeadFormModal: React.FC<LeadFormModalProps> = ({
     setErrorMsg(null);
 
     try {
-      const saveOperation = (async () => {
-      if (isEditing && initialLead) {
-        const { data, error } = await leadService.updateLead(initialLead.id, {
-          full_name: fullName.trim(),
-          email: email.trim() || null,
-          phone: phone.trim(),
-          course_interest: courseInterest,
-          status,
-          priority,
-          source,
-          notes: notes.trim() || null,
-          assigned_to: assignedTo || null,
-        });
+      const payload = {
+        full_name: fullName.trim(),
+        email: email.trim() || null,
+        phone: phone.trim(),
+        course_interest: courseInterest,
+        status,
+        priority,
+        source,
+        notes: notes.trim() || null,
+        assigned_to: assignedTo || null,
+      };
 
-        if (error) {
-          setErrorMsg(error.message);
-        } else if (data) {
-          onSuccess(data);
-          onClose();
-        }
-      } else {
-        const { data, error } = await leadService.createLead({
-          full_name: fullName.trim(),
-          email: email.trim() || null,
-          phone: phone.trim(),
-          course_interest: courseInterest,
-          status,
-          priority,
-          source,
-          notes: notes.trim() || null,
-          assigned_to: assignedTo || null,
-        });
+      const result = isEditing && initialLead
+        ? await leadService.updateLead(initialLead.id, payload)
+        : await leadService.createLead(payload);
 
-        if (error) {
-          setErrorMsg(error.message);
-        } else if (data) {
-          onSuccess(data);
-          onClose();
-        }
+      if (result.error) {
+        setErrorMsg(result.error.message || 'Unable to save this lead.');
+        return;
       }
-      })();
 
-      let timeoutHandle: ReturnType<typeof setTimeout> | undefined;
-      const timeout = new Promise<never>((_, reject) => {
-        timeoutHandle = setTimeout(() => reject(new Error(
-          'The CRM did not receive a response from Supabase within 25 seconds. The save may still complete in the background. Refresh the Leads page before trying again to avoid duplicates.'
-        )), 25000);
-      });
-
-      try {
-        await Promise.race([saveOperation, timeout]);
-      } finally {
-        if (timeoutHandle) clearTimeout(timeoutHandle);
+      if (!result.data) {
+        setErrorMsg('Supabase returned no saved lead. Refresh the Leads page and check before retrying.');
+        return;
       }
-    } catch (err: any) {
+
+      onSuccess(result.data);
+      onClose();
+    } catch (err: unknown) {
       console.error('Lead form submission failed:', err);
-      setErrorMsg(err.message || 'Operation failed. Please try again.');
+      setErrorMsg(err instanceof Error ? err.message : 'Unexpected error while saving the lead.');
     } finally {
       setSubmitting(false);
     }
