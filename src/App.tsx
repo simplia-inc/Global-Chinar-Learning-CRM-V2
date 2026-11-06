@@ -127,8 +127,8 @@ const MainApp: React.FC = () => {
         if (role === 'super_admin' || role === 'admin') return <StudentsView key={`students-${refreshKey}`} />;
         return <DashboardView key={`students-denied-${refreshKey}`} onViewLead={handleViewLead} onViewLeadById={handleViewLeadById} onOpenCreateLead={() => setIsCreateLeadOpen(true)} onNavigateToLeads={() => setCurrentTab('leads')} />;
       case 'courses':
-        if (role === 'super_admin' || role === 'admin') return <CoursesView key={\`courses-\${refreshKey}\`} />;
-        return <DashboardView key={\`courses-denied-\${refreshKey}\`} onViewLead={handleViewLead} onViewLeadById={handleViewLeadById} onOpenCreateLead={() => setIsCreateLeadOpen(true)} onNavigateToLeads={() => setCurrentTab('leads')} />;
+        if (role === 'super_admin' || role === 'admin') return <CoursesView key={`courses-${refreshKey}`} />;
+        return <DashboardView key={`courses-denied-${refreshKey}`} onViewLead={handleViewLead} onViewLeadById={handleViewLeadById} onOpenCreateLead={() => setIsCreateLeadOpen(true)} onNavigateToLeads={() => setCurrentTab('leads')} />;
       case 'team':
         if (role === 'super_admin' || role === 'admin') {
           return <TeamView key={`team-${refreshKey}`} />;
@@ -147,7 +147,7 @@ const MainApp: React.FC = () => {
         );
       case 'batches':
         if (role === 'super_admin' || role === 'admin' || role === 'trainer') return <BatchesView />;
-        return <DashboardView key={\`batches-denied-\${refreshKey}\`} onViewLead={handleViewLead} onViewLeadById={handleViewLeadById} onOpenCreateLead={() => setIsCreateLeadOpen(true)} onNavigateToLeads={() => setCurrentTab('leads')} />;
+        return <DashboardView key={`batches-denied-${refreshKey}`} onViewLead={handleViewLead} onViewLeadById={handleViewLeadById} onOpenCreateLead={() => setIsCreateLeadOpen(true)} onNavigateToLeads={() => setCurrentTab('leads')} />;
       case 'settings':
         return <SettingsView />;
       default:
