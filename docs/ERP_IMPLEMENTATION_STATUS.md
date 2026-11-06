@@ -1,54 +1,34 @@
 # Global Chinar School ERP — implementation status
 
-## Product boundary
-This is an internal staff and trainer system. Students are records managed by authorised staff; there is no student login or student portal.
+_Last updated: 2026-11-06. Internal staff/trainer system; no student portal, no multi-branch._
 
-## Current application audit (repository review)
-- Authentication: Supabase email/password with profile lookup and role read from `public.profiles`.
-- Existing roles: `super_admin`, `admin`, `employee`, `trainer`.
-- Leads: existing list, create/edit, details, assignment and follow-up service paths.
-- Dashboard: lead-centric summary; not yet a complete school operations dashboard.
-- Team: profile directory only; full account provisioning and staff lifecycle are not implemented.
-- Batches: current screen contains hardcoded demonstration cohorts and must not be treated as live operational data.
-- Not yet implemented as connected modules: student records, course catalogue, enrolments, class sessions, attendance, invoices, payments, trainer payouts, operational reports and audit viewer.
+## Database (Supabase project `global-chinar-crm`)
+Applied to the live project, in order:
+1. `school_erp_foundation` — `supabase/migrations/202611050001_school_erp_foundation.sql`
+2. `erp_hardening` — `supabase/migrations/202611060001_erp_hardening.sql`
+3. `function_grants_and_follow_up_scheduling` — function EXECUTE lockdown; adds `scheduled_at`, `completed_at`, `status` to `follow_ups`
 
-## ERP database foundation
-The additive migration at `supabase/migrations/202611050001_school_erp_foundation.sql` introduces tables for:
-- Courses and student records
-- Batches and trainer assignments
-- Enrolments, class sessions and attendance
-- Student invoices and payments
-- Trainer payouts and audit-log storage
+The earlier duplicate `202611050001_school_erp_core.sql` was removed: it defined conflicting tables (`courses`, `batches`) and over-broad read policies. Do not re-add it.
 
-It enables RLS and adds role-scoped policies. Admin operations are restricted to active `super_admin` and `admin` profiles. Trainers can read assigned batches and their associated rosters, and manage attendance/class sessions only within assigned batches. Finance records remain admin-only. Employees do not receive broad student or finance access.
+### Guarantees enforced in the database (tested)
+- RLS on all 15 public tables; `anon` has no access.
+- Finance is admin-only. Payments are insert-only; corrections are `reversal` rows with a reason. Invoice status is derived by trigger; overpayment is rejected.
+- No DELETE grant on students, enrolments, invoices, payments, payouts, sessions, attendance or audit logs.
+- Audit trigger records inserts/updates/deletes (with old/new values) on students, enrolments, courses, batches, trainers, sessions, invoices, payments, payouts, leads, assignments and profiles.
+- Batch capacity is enforced on enrolment. One student per source lead.
+- Admins cannot promote themselves or anyone to `super_admin`, and cannot modify a `super_admin`.
+- Trainers see only assigned batches, their rosters and attendance. Employees see only students they created or from leads they can access.
 
-## Required deployment step — not automatic
-1. Open the Supabase project connected to the production CRM.
-2. Open SQL Editor and review the migration file in this repository.
-3. Run the migration once in that project.
-4. Confirm all eleven ERP tables exist and RLS is enabled.
-5. Test with separate super_admin, admin, employee and trainer accounts before using real student or financial data.
+## Application
+Working against the live schema: auth, leads (create/edit/assign/status), follow-ups, courses CRUD, batches (create/status/trainer), students (list/create).
 
-The migration is additive and rerunnable; it does not drop or rewrite existing CRM tables. Do not run it against a different Supabase project.
+Not yet implemented as connected screens: student edit/archive/detail, enrolments and lead conversion, class sessions, attendance, invoices/payments UI, trainer payouts, staff provisioning (needs a server-side Auth admin call), reports, notifications, audit viewer, Google Sheets sync.
 
-## Verification status
-- GitHub source change: committed.
-- Supabase migration: committed as source only; not executed against the live database.
-- Hostinger production deployment: not independently verified from this repository session.
-- Production CRUD, role isolation, payment calculations and attendance workflows: not yet verified.
-- No claim is made that the CRM is a finished ERP at this stage.
-
-## Safe implementation order
-1. Verify live auth and lead create/update against Supabase, using actual network responses and RLS.
-2. Apply and verify the ERP schema.
-3. Implement database-backed course, student, batch and enrolment CRUD.
-4. Implement sessions and attendance with trainer scoping.
-5. Implement invoices, payments and balance calculations with server/database-side validation.
-6. Implement staff lifecycle, reports, notifications and audit history.
-7. Run role-based acceptance tests and production smoke tests.
+## Verification
+- `npm run lint` and `npm run build` pass locally.
+- Role matrix tested against the live database in a rolled-back transaction (super admin, admin, employee, trainer, anon).
+- Not verified: browser/UI testing, mobile layout, Hostinger deployment.
 
 ## Security invariants
-- Never expose Supabase service-role credentials to browser code or `VITE_*` variables.
-- Keep role assignment restricted to trusted administrators; do not allow users to update their own role.
-- Keep RLS enabled on all student, batch, attendance and finance tables.
-- Treat browser UI restrictions as usability only; database RLS is the security boundary.
+- Never expose service-role keys in browser code or `VITE_*` variables.
+- Browser restrictions are usability only; RLS is the security boundary.
