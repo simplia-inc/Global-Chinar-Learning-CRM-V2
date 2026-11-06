@@ -34,7 +34,7 @@ export const StudentsView: React.FC = () => {
       .order('created_at', { ascending: false }).limit(500);
     if (queryError) {
       setError(queryError.code === 'PGRST205' || queryError.message.includes('schema cache')
-        ? 'Student database is not installed yet. Run the school ERP migration from the GitHub repository in the connected Supabase SQL Editor.'
+        ? 'The student tables were not found in the connected Supabase project. Confirm VITE_SUPABASE_URL points to global-chinar-crm.'
         : queryError.message);
       setStudents([]);
     } else setStudents((data || []) as Student[]);

@@ -97,7 +97,7 @@ export const RecentLeadsTable: React.FC<RecentLeadsTableProps> = ({
                   </td>
                   <td className="py-3 px-3 text-slate-700">
                     <span className="font-medium truncate max-w-[150px] inline-block">
-                      {lead.course_interest || 'General DM'}
+                      {lead.course_interest || 'Not specified'}
                     </span>
                   </td>
                   <td className="py-3 px-3">

@@ -20,13 +20,12 @@ export interface Profile {
 export type LeadStatus =
   | 'new'
   | 'contacted'
-  | 'in_progress'
+  | 'follow_up'
   | 'qualified'
   | 'converted'
-  | 'lost'
-  | 'archived';
+  | 'lost';
 
-export type LeadPriority = 'low' | 'medium' | 'high' | 'urgent';
+export type LeadPriority = 'low' | 'normal' | 'high';
 
 export interface Lead {
   id: string;
@@ -56,6 +55,7 @@ export interface LeadAssignment {
   assigned_by_profile?: Profile | null;
 }
 
+// 'overdue' is derived in the UI (pending and scheduled_at in the past); it is not stored.
 export type FollowUpStatus = 'pending' | 'completed' | 'cancelled' | 'overdue';
 export type ContactMethod = 'call' | 'whatsapp' | 'email' | 'in_person';
 

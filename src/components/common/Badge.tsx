@@ -68,17 +68,14 @@ export const StatusBadge: React.FC<{ status: LeadStatus | string; className?: st
       return <Badge variant="blue" className={className}>New Lead</Badge>;
     case 'contacted':
       return <Badge variant="amber" className={className}>Contacted</Badge>;
-    case 'in_progress':
-      return <Badge variant="default" className={className}>In Progress</Badge>;
+    case 'follow_up':
+      return <Badge variant="default" className={className}>Follow-up</Badge>;
     case 'qualified':
       return <Badge variant="emerald" className={className}>Qualified</Badge>;
     case 'converted':
-    case 'enrolled':
-      return <Badge variant="emerald" className={className}>Converted / Enrolled</Badge>;
+      return <Badge variant="emerald" className={className}>Converted</Badge>;
     case 'lost':
       return <Badge variant="crimson" className={className}>Lost</Badge>;
-    case 'archived':
-      return <Badge variant="slate" className={className}>Archived</Badge>;
     default:
       return <Badge variant="default" className={className}>{status}</Badge>;
   }
@@ -86,13 +83,6 @@ export const StatusBadge: React.FC<{ status: LeadStatus | string; className?: st
 
 export const PriorityBadge: React.FC<{ priority: LeadPriority | string; className?: string }> = ({ priority, className = '' }) => {
   switch (priority) {
-    case 'urgent':
-      return (
-        <span className={`inline-flex items-center gap-1 text-xs font-semibold text-rose-700 ${className}`}>
-          <span className="w-1.5 h-1.5 rounded-full bg-rose-600"></span>
-          Urgent
-        </span>
-      );
     case 'high':
       return (
         <span className={`inline-flex items-center gap-1 text-xs font-medium text-amber-700 ${className}`}>
@@ -100,11 +90,11 @@ export const PriorityBadge: React.FC<{ priority: LeadPriority | string; classNam
           High
         </span>
       );
-    case 'medium':
+    case 'normal':
       return (
         <span className={`inline-flex items-center gap-1 text-xs font-medium text-slate-600 ${className}`}>
           <span className="w-1.5 h-1.5 rounded-full bg-slate-400"></span>
-          Medium
+          Normal
         </span>
       );
     case 'low':

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Modal } from '../common/Modal';
 import { leadService } from '../../services/leadService';
 import { teamService } from '../../services/teamService';
+import { getSupabaseClient } from '../../lib/supabase';
 import type { Lead, LeadStatus, LeadPriority, Profile } from '../../types/database';
 
 interface LeadFormModalProps {
@@ -10,17 +11,6 @@ interface LeadFormModalProps {
   onSuccess: (lead: Lead) => void;
   initialLead?: Lead | null;
 }
-
-const COURSES = [
-  'Digital Marketing Masterclass (Comprehensive)',
-  'SEO & Search Engine Optimization',
-  'Performance Marketing & Meta Ads',
-  'Google Ads & SEM',
-  'Social Media Marketing & Brand Building',
-  'Content Strategy & Copywriting',
-  'Web Analytics & Conversion Rate Optimization',
-  'E-Commerce Growth Marketing',
-];
 
 const SOURCES = [
   'Website Form',
@@ -44,9 +34,10 @@ export const LeadFormModal: React.FC<LeadFormModalProps> = ({
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
-  const [courseInterest, setCourseInterest] = useState(COURSES[0]);
+  const [courseInterest, setCourseInterest] = useState('');
+  const [courseOptions, setCourseOptions] = useState<string[]>([]);
   const [status, setStatus] = useState<LeadStatus>('new');
-  const [priority, setPriority] = useState<LeadPriority>('medium');
+  const [priority, setPriority] = useState<LeadPriority>('normal');
   const [source, setSource] = useState(SOURCES[0]);
   const [notes, setNotes] = useState('');
   const [assignedTo, setAssignedTo] = useState<string>('');
@@ -56,12 +47,21 @@ export const LeadFormModal: React.FC<LeadFormModalProps> = ({
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!isOpen) return;
+    const db = getSupabaseClient();
+    if (!db) return;
+    void db.from('school_courses').select('name').eq('is_active', true).order('name').then(({ data }) => {
+      setCourseOptions((data || []).map((c: { name: string }) => c.name));
+    });
+  }, [isOpen]);
+
+  useEffect(() => {
     if (isOpen) {
       if (initialLead) {
         setFullName(initialLead.full_name);
         setEmail(initialLead.email || '');
         setPhone(initialLead.phone);
-        setCourseInterest(initialLead.course_interest || COURSES[0]);
+        setCourseInterest(initialLead.course_interest || '');
         setStatus(initialLead.status);
         setPriority(initialLead.priority);
         setSource(initialLead.source || SOURCES[0]);
@@ -71,9 +71,9 @@ export const LeadFormModal: React.FC<LeadFormModalProps> = ({
         setFullName('');
         setEmail('');
         setPhone('');
-        setCourseInterest(COURSES[0]);
+        setCourseInterest('');
         setStatus('new');
-        setPriority('medium');
+        setPriority('normal');
         setSource(SOURCES[0]);
         setNotes('');
         setAssignedTo('');
@@ -199,17 +199,18 @@ export const LeadFormModal: React.FC<LeadFormModalProps> = ({
             <label className="block font-medium text-slate-700 mb-1">
               Course Interest
             </label>
-            <select
+            <input
+              list="course-options"
               value={courseInterest}
               onChange={(e) => setCourseInterest(e.target.value)}
+              placeholder="Course the lead is interested in"
               className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-hidden focus:ring-2 focus:ring-teal-600 text-xs bg-white"
-            >
-              {COURSES.map((c) => (
-                <option key={c} value={c}>
-                  {c}
-                </option>
+            />
+            <datalist id="course-options">
+              {courseOptions.map((c) => (
+                <option key={c} value={c} />
               ))}
-            </select>
+            </datalist>
           </div>
         </div>
 
@@ -223,11 +224,10 @@ export const LeadFormModal: React.FC<LeadFormModalProps> = ({
             >
               <option value="new">New Lead</option>
               <option value="contacted">Contacted</option>
-              <option value="in_progress">In Progress</option>
+              <option value="follow_up">Follow-up</option>
               <option value="qualified">Qualified</option>
-              <option value="converted">Converted / Enrolled</option>
+              <option value="converted">Converted</option>
               <option value="lost">Lost</option>
-              <option value="archived">Archived</option>
             </select>
           </div>
 
@@ -239,9 +239,8 @@ export const LeadFormModal: React.FC<LeadFormModalProps> = ({
               className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-hidden focus:ring-2 focus:ring-teal-600 text-xs bg-white"
             >
               <option value="low">Low</option>
-              <option value="medium">Medium</option>
+              <option value="normal">Normal</option>
               <option value="high">High</option>
-              <option value="urgent">Urgent</option>
             </select>
           </div>
 

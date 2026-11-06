@@ -198,7 +198,7 @@ export const LeadDetailsModal: React.FC<LeadDetailsModalProps> = ({
                 <StatusBadge status={lead.status} />
                 <PriorityBadge priority={lead.priority} />
               </div>
-              <p className="text-slate-600 font-medium">{lead.course_interest || 'Digital Marketing Masterclass'}</p>
+              <p className="text-slate-600 font-medium">{lead.course_interest || 'Not specified'}</p>
               <div className="flex items-center gap-4 text-[11px] text-slate-500 pt-1">
                 <span className="flex items-center gap-1 font-mono">
                   <Phone className="w-3.5 h-3.5 text-slate-400" />
@@ -243,11 +243,10 @@ export const LeadDetailsModal: React.FC<LeadDetailsModalProps> = ({
               >
                 <option value="new">New Lead</option>
                 <option value="contacted">Contacted</option>
-                <option value="in_progress">In Progress</option>
+                <option value="follow_up">Follow-up</option>
                 <option value="qualified">Qualified</option>
-                <option value="converted">Converted / Enrolled</option>
+                <option value="converted">Converted</option>
                 <option value="lost">Lost</option>
-                <option value="archived">Archived</option>
               </select>
             </div>
 

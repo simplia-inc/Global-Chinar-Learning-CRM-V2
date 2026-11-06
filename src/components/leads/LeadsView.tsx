@@ -153,11 +153,10 @@ export const LeadsView: React.FC<LeadsViewProps> = ({
               <option value="all">All Statuses</option>
               <option value="new">New Inquiries</option>
               <option value="contacted">Contacted</option>
-              <option value="in_progress">In Progress</option>
+              <option value="follow_up">Follow-up</option>
               <option value="qualified">Qualified</option>
-              <option value="converted">Converted / Enrolled</option>
+              <option value="converted">Converted</option>
               <option value="lost">Lost</option>
-              <option value="archived">Archived</option>
             </select>
 
             {/* Priority Filter */}
@@ -167,9 +166,8 @@ export const LeadsView: React.FC<LeadsViewProps> = ({
               className="px-3 py-2 border border-slate-200 rounded-lg text-xs font-medium text-slate-700 bg-white focus:outline-hidden focus:ring-2 focus:ring-teal-600"
             >
               <option value="all">All Priorities</option>
-              <option value="urgent">Urgent</option>
               <option value="high">High</option>
-              <option value="medium">Medium</option>
+              <option value="normal">Normal</option>
               <option value="low">Low</option>
             </select>
 
@@ -263,7 +261,7 @@ export const LeadsView: React.FC<LeadsViewProps> = ({
                       </div>
                     </td>
                     <td className="py-3.5 px-4 text-slate-800 font-medium">
-                      {lead.course_interest || 'General DM Masterclass'}
+                      {lead.course_interest || 'Not specified'}
                     </td>
                     <td className="py-3.5 px-4">
                       <StatusBadge status={lead.status} />
