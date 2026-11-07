@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { Sidebar, NavTab } from './Sidebar';
 import { TopBar } from './TopBar';
-import { ConnectionBanner } from '../common/ConnectionBanner';
 
 interface AppLayoutProps {
   currentTab: NavTab;
@@ -20,16 +19,12 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col font-sans">
-      {/* Topmost Connection Banner */}
-      <ConnectionBanner />
-
       <div className="flex-1 flex overflow-hidden">
         {/* Desktop Sidebar (Fixed / Sticky 64 width) */}
         <aside className="hidden lg:block shrink-0 h-screen sticky top-0">
           <Sidebar
             currentTab={currentTab}
             onSelectTab={onSelectTab}
-            onOpenCreateLead={onOpenCreateLead}
           />
         </aside>
 
@@ -46,7 +41,6 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
               <Sidebar
                 currentTab={currentTab}
                 onSelectTab={onSelectTab}
-                onOpenCreateLead={onOpenCreateLead}
                 onCloseMobile={() => setMobileMenuOpen(false)}
               />
             </div>

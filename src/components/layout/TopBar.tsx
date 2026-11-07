@@ -23,6 +23,12 @@ export const TopBar: React.FC<TopBarProps> = ({
         return 'Executive Overview';
       case 'leads':
         return 'Leads & Admissions Pipeline';
+      case 'students':
+        return 'Students';
+      case 'courses':
+        return 'Courses & Programs';
+      case 'sheets':
+        return 'Google Sheets Integration';
       case 'team':
         return 'Staff & Faculty Directory';
       case 'batches':

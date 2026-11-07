@@ -7,25 +7,23 @@ import {
   Settings,
   LogOut,
   GraduationCap,
-  Sparkles,
+  Sheet,
   Layers,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { RoleBadge } from '../common/Badge';
 
-export type NavTab = 'dashboard' | 'leads' | 'students' | 'courses' | 'team' | 'batches' | 'settings';
+export type NavTab = 'dashboard' | 'leads' | 'students' | 'courses' | 'team' | 'batches' | 'sheets' | 'settings';
 
 interface SidebarProps {
   currentTab: NavTab;
   onSelectTab: (tab: NavTab) => void;
-  onOpenCreateLead: () => void;
   onCloseMobile?: () => void;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
   currentTab,
   onSelectTab,
-  onOpenCreateLead,
   onCloseMobile,
 }) => {
   const { profile, role, user, signOut } = useAuth();
@@ -65,6 +63,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
     if (role === 'super_admin' || role === 'admin') {
       items.push({ id: 'courses' as NavTab, label: 'Courses', icon: Layers });
       items.push({ id: 'batches' as NavTab, label: 'Batches', icon: CalendarCheck });
+    }
+
+    // Google Sheets lead sync is restricted to Admin and Super Admin
+    if (role === 'super_admin' || role === 'admin') {
+      items.push({ id: 'sheets' as NavTab, label: 'Google Sheets', icon: Sheet });
     }
 
     // Super Admin and Admin can view Staff / Team
@@ -153,20 +156,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
           <span className="text-teal-400">GLOBAL REACH</span>
         </div>
       </div>
-
-      {/* Primary Action Button (for authorized roles: super_admin, admin, employee) */}
-      {role !== 'trainer' && (
-        <div className="px-4 pt-4">
-          <button
-            type="button"
-            onClick={onOpenCreateLead}
-            className="w-full py-2.5 px-3 bg-gradient-to-r from-amber-600 via-amber-500 to-teal-600 hover:from-amber-500 hover:to-teal-500 text-white font-semibold text-xs rounded-lg shadow-sm transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-[0.98]"
-          >
-            <Sparkles className="w-3.5 h-3.5" />
-            + New Student Lead
-          </button>
-        </div>
-      )}
 
       {/* Navigation Links */}
       <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">

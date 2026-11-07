@@ -1,12 +1,11 @@
 import React, { useState } from 'react';
-import { User, Shield, Lock, CheckCircle, Database, AlertCircle } from 'lucide-react';
+import { User, Shield, Lock, CheckCircle, AlertCircle } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { RoleBadge } from '../common/Badge';
-import { getSupabaseCredentials } from '../../lib/supabase';
+import { ConnectionDiagnostics } from './ConnectionDiagnostics';
 
 export const SettingsView: React.FC = () => {
   const { user, profile, role, updateUserPassword, refreshProfile } = useAuth();
-  const creds = getSupabaseCredentials();
 
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -97,29 +96,7 @@ export const SettingsView: React.FC = () => {
         </div>
       </div>
 
-      {/* Supabase Connection Details */}
-      <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-xs space-y-4">
-        <div className="flex items-center gap-2 text-sm font-semibold text-slate-900">
-          <Database className="w-4 h-4 text-teal-600" />
-          <span>Supabase Infrastructure</span>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
-          <div className="p-3 bg-slate-50 rounded-lg border border-slate-200">
-            <span className="text-[11px] text-slate-500 block">Supabase Project</span>
-            <span className="font-mono font-bold text-slate-800">global-chinar-crm</span>
-          </div>
-          <div className="p-3 bg-slate-50 rounded-lg border border-slate-200">
-            <span className="text-[11px] text-slate-500 block">Super Admin Account</span>
-            <span className="font-mono font-semibold text-amber-700">simpliain@gmail.com</span>
-          </div>
-        </div>
-
-        <div className="text-[11px] text-slate-500 space-y-1">
-          <p>• Database tables in use: <code className="font-mono text-slate-700">profiles</code>, <code className="font-mono text-slate-700">leads</code>, <code className="font-mono text-slate-700">lead_assignments</code>, <code className="font-mono text-slate-700">follow_ups</code>.</p>
-          <p>• Connected API URL: <code className="font-mono text-slate-700">{creds.url || 'Not configured'}</code>.</p>
-        </div>
-      </div>
+      {role === 'super_admin' && <ConnectionDiagnostics />}
 
       {/* Update Password */}
       <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-xs">

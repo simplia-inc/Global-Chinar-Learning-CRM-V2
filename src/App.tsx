@@ -11,6 +11,7 @@ import { CoursesView } from './components/courses/CoursesView';
 import { TeamView } from './components/team/TeamView';
 import { BatchesView } from './components/batches/BatchesView';
 import { SettingsView } from './components/settings/SettingsView';
+import { SheetsIntegrationView } from './components/sheets/SheetsIntegrationView';
 import { LeadFormModal } from './components/leads/LeadFormModal';
 import { LeadDetailsModal } from './components/leads/LeadDetailsModal';
 import type { Lead } from './types/database';
@@ -95,22 +96,14 @@ const MainApp: React.FC = () => {
     setRefreshKey((k) => k + 1);
   };
 
-  // Render view based on tab and role
+  const isAdminRole = role === 'super_admin' || role === 'admin';
+  const dashboard = (key: string) => (
+    <DashboardView key={`${key}-${refreshKey}`} onViewLeadById={handleViewLeadById} onNavigate={setCurrentTab} />
+  );
+
+  // Render view based on tab and role (unauthorised tabs fall back to the dashboard)
   const renderView = () => {
     switch (currentTab) {
-      case 'dashboard':
-        return (
-          <DashboardView
-            key={`dash-${refreshKey}`}
-            onViewLead={handleViewLead}
-            onViewLeadById={handleViewLeadById}
-            onOpenCreateLead={() => {
-              setEditingLead(null);
-              setIsCreateLeadOpen(true);
-            }}
-            onNavigateToLeads={() => setCurrentTab('leads')}
-          />
-        );
       case 'leads':
         return (
           <LeadsView
@@ -124,45 +117,19 @@ const MainApp: React.FC = () => {
           />
         );
       case 'students':
-        if (role === 'super_admin' || role === 'admin') return <StudentsView key={`students-${refreshKey}`} />;
-        return <DashboardView key={`students-denied-${refreshKey}`} onViewLead={handleViewLead} onViewLeadById={handleViewLeadById} onOpenCreateLead={() => setIsCreateLeadOpen(true)} onNavigateToLeads={() => setCurrentTab('leads')} />;
+        return isAdminRole ? <StudentsView key={`students-${refreshKey}`} /> : dashboard('students-denied');
       case 'courses':
-        if (role === 'super_admin' || role === 'admin') return <CoursesView key={`courses-${refreshKey}`} />;
-        return <DashboardView key={`courses-denied-${refreshKey}`} onViewLead={handleViewLead} onViewLeadById={handleViewLeadById} onOpenCreateLead={() => setIsCreateLeadOpen(true)} onNavigateToLeads={() => setCurrentTab('leads')} />;
+        return isAdminRole ? <CoursesView key={`courses-${refreshKey}`} /> : dashboard('courses-denied');
       case 'team':
-        if (role === 'super_admin' || role === 'admin') {
-          return <TeamView key={`team-${refreshKey}`} />;
-        }
-        return (
-          <DashboardView
-            key={`dash-fallback-${refreshKey}`}
-            onViewLead={handleViewLead}
-            onViewLeadById={handleViewLeadById}
-            onOpenCreateLead={() => {
-              setEditingLead(null);
-              setIsCreateLeadOpen(true);
-            }}
-            onNavigateToLeads={() => setCurrentTab('leads')}
-          />
-        );
+        return isAdminRole ? <TeamView key={`team-${refreshKey}`} /> : dashboard('team-denied');
       case 'batches':
-        if (role === 'super_admin' || role === 'admin' || role === 'trainer') return <BatchesView />;
-        return <DashboardView key={`batches-denied-${refreshKey}`} onViewLead={handleViewLead} onViewLeadById={handleViewLeadById} onOpenCreateLead={() => setIsCreateLeadOpen(true)} onNavigateToLeads={() => setCurrentTab('leads')} />;
+        return isAdminRole || role === 'trainer' ? <BatchesView /> : dashboard('batches-denied');
+      case 'sheets':
+        return isAdminRole ? <SheetsIntegrationView onViewLeadById={handleViewLeadById} /> : dashboard('sheets-denied');
       case 'settings':
         return <SettingsView />;
       default:
-        return (
-          <DashboardView
-            key={`dash-def-${refreshKey}`}
-            onViewLead={handleViewLead}
-            onViewLeadById={handleViewLeadById}
-            onOpenCreateLead={() => {
-              setEditingLead(null);
-              setIsCreateLeadOpen(true);
-            }}
-            onNavigateToLeads={() => setCurrentTab('leads')}
-          />
-        );
+        return dashboard('dash');
     }
   };
 
