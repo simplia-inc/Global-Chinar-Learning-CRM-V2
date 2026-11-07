@@ -74,7 +74,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (error) {
         if (error.code === 'PGRST205' || error.message.includes('schema cache')) {
           const creds = getSupabaseCredentials();
-          setAuthError(`Database notice: table 'public.profiles' was not found in project '${creds.projectHost}'. Please verify connection to the intended 'global-chinar-crm' project.`);
+          setAuthError('The CRM database is not set up correctly. Please contact your administrator.');
         } else {
           setAuthError(`Database error accessing public.profiles: ${error.message}`);
         }
@@ -93,7 +93,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             const foundProfile = emailData as Profile;
             if (!foundProfile.is_active) {
               setIsAccountInactive(true);
-              setAuthError('Your user account is deactivated in public.profiles. Contact Super Admin (simpliain@gmail.com).');
+              setAuthError('Your account has been deactivated. Please contact your administrator.');
               return null;
             }
             setIsAccountInactive(false);
@@ -102,7 +102,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           }
         }
 
-        setAuthError(`Authentication succeeded for ${userEmail || userId}, but no profile was found in public.profiles. Contact Super Admin (simpliain@gmail.com).`);
+        setAuthError('Your login worked, but your staff profile was not found. Please contact your administrator.');
         return null;
       }
 
@@ -110,7 +110,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       if (!userProfile.is_active) {
         setIsAccountInactive(true);
-        setAuthError('Your user account is deactivated in public.profiles. Contact Super Admin (simpliain@gmail.com).');
+        setAuthError('Your account has been deactivated. Please contact your administrator.');
         return null;
       }
 
@@ -263,7 +263,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         let message = error.message;
 
         if (error.message.toLowerCase().includes('invalid login credentials')) {
-          message = `Invalid email or password for Supabase project '${creds.projectHost}'.`;
+          message = 'Invalid email or password.';
         }
 
         setAuthError(message);
@@ -280,7 +280,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
           const inactiveErr = new Error(
             isAccountInactive
-              ? 'Your account is deactivated in public.profiles. Contact Super Admin (simpliain@gmail.com).'
+              ? 'Your account has been deactivated. Please contact your administrator.'
               : 'Authenticated, but no profile was found in public.profiles. Contact Super Admin.'
           );
           return { error: inactiveErr, profile: null };
