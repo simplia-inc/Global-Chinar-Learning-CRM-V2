@@ -40,6 +40,9 @@ export interface Lead {
   assigned_to: string | null;
   created_at: string;
   updated_at?: string;
+  next_follow_up_at?: string | null;
+  // Derived client-side from completed follow-ups
+  last_contact_at?: string | null;
   // Joined relation helper
   assigned_profile?: Profile | null;
 }

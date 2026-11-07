@@ -63,16 +63,16 @@ export const leadService = {
           source,
           notes,
           assigned_to,
+          next_follow_up_at,
           created_at,
           updated_at
         `)
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .limit(options.limit ?? 1000);
 
       if (options.status && options.status !== 'all') query = query.eq('status', options.status);
       if (options.priority && options.priority !== 'all') query = query.eq('priority', options.priority);
       if (options.course && options.course !== 'all') query = query.eq('interested_course', options.course);
-      if (options.limit) query = query.limit(options.limit);
-
       const { data, error } = await query;
       if (error) {
         console.error('Error fetching leads:', error);
@@ -80,6 +80,15 @@ export const leadService = {
       }
 
       let leadsList = ((data as any[]) || []).map(mapLeadRow);
+      // Last contact = most recent completed follow-up (RLS limits this to follow-ups the user may see).
+      if (leadsList.length > 0 && !options.limit) {
+        const { data: done } = await client.from('follow_ups').select('lead_id, completed_at').eq('status', 'completed').not('completed_at', 'is', null);
+        const latest = new Map<string, string>();
+        for (const f of (done as Array<{ lead_id: string; completed_at: string }>) || []) {
+          if (!latest.has(f.lead_id) || f.completed_at > latest.get(f.lead_id)!) latest.set(f.lead_id, f.completed_at);
+        }
+        leadsList = leadsList.map((l) => ({ ...l, last_contact_at: latest.get(l.id) ?? null }));
+      }
       if (options.search?.trim()) {
         const q = options.search.toLowerCase().trim();
         leadsList = leadsList.filter((lead) =>
@@ -234,6 +243,40 @@ export const leadService = {
     } catch (err: any) {
       return { data: null, error: err };
     }
+  },
+
+  // Bulk assignment (Admin / Super Admin; enforced by RLS). Records one assignment history row per lead.
+  async bulkAssign(leadIds: string[], employeeId: string): Promise<{ error: Error | null }> {
+    const client = getSupabaseClient();
+    if (!client) return { error: new Error('Supabase client not initialized') };
+    if (leadIds.length === 0) return { error: null };
+    const { data: authData } = await client.auth.getUser();
+    const me = authData?.user?.id;
+    if (!me) return { error: new Error('You must be signed in.') };
+    const { data: updated, error: updErr } = await client.from('leads').update({ assigned_to: employeeId }).in('id', leadIds).select('id');
+    if (updErr) return { error: new Error(updErr.message) };
+    const ids = (updated || []).map((r: { id: string }) => r.id);
+    if (ids.length === 0) return { error: new Error('No leads were updated. You may not have permission.') };
+    const { error: histErr } = await client.from('lead_assignments').insert(ids.map((id) => ({ lead_id: id, employee_id: employeeId, assigned_by: me, notes: 'Bulk assignment' })));
+    if (histErr) return { error: new Error(`Leads were assigned, but history could not be saved: ${histErr.message}`) };
+    return { error: null };
+  },
+
+  // Schedules the same follow-up for several leads.
+  async bulkScheduleFollowUp(leadIds: string[], scheduledAt: string, method: string, notes?: string): Promise<{ error: Error | null }> {
+    const client = getSupabaseClient();
+    if (!client) return { error: new Error('Supabase client not initialized') };
+    const { data: authData } = await client.auth.getUser();
+    const me = authData?.user?.id;
+    if (!me) return { error: new Error('You must be signed in.') };
+    const rows = leadIds.map((id) => ({
+      lead_id: id, employee_id: me, follow_up_type: method, scheduled_at: scheduledAt, next_follow_up_at: scheduledAt,
+      notes: notes?.trim() || 'Follow-up scheduled', status: 'pending',
+    }));
+    const { error } = await client.from('follow_ups').insert(rows);
+    if (error) return { error: new Error(error.message) };
+    await client.from('leads').update({ next_follow_up_at: scheduledAt }).in('id', leadIds);
+    return { error: null };
   },
 
   async assignLead(leadId: string, assignedToProfileId: string, notes?: string): Promise<{ error: Error | null }> {
