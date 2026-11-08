@@ -8,12 +8,13 @@ import {
   LogOut,
   GraduationCap,
   Sheet,
+  Wallet,
   Layers,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { RoleBadge } from '../common/Badge';
 
-export type NavTab = 'dashboard' | 'leads' | 'students' | 'courses' | 'team' | 'batches' | 'sheets' | 'settings';
+export type NavTab = 'dashboard' | 'leads' | 'students' | 'courses' | 'team' | 'batches' | 'fees' | 'sheets' | 'settings';
 
 interface SidebarProps {
   currentTab: NavTab;
@@ -63,6 +64,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
     if (role === 'super_admin' || role === 'admin') {
       items.push({ id: 'courses' as NavTab, label: 'Courses', icon: Layers });
       items.push({ id: 'batches' as NavTab, label: 'Batches', icon: CalendarCheck });
+    }
+
+    // Batch-wise fees and payments are finance data: Admin and Super Admin only
+    if (role === 'super_admin' || role === 'admin') {
+      items.push({ id: 'fees' as NavTab, label: 'Batch Fees', icon: Wallet });
     }
 
     // Google Sheets lead sync is restricted to Admin and Super Admin

@@ -20,3 +20,33 @@
     font-variant-numeric: tabular-nums;
   }
 }
+
+/* Print: reports print cleanly without the app chrome. */
+@media print {
+  aside,
+  body > div > div > header.sticky,
+  header.sticky.top-0 {
+    display: none !important;
+  }
+  main {
+    padding: 0 !important;
+    max-width: none !important;
+  }
+  body {
+    background: #fff !important;
+  }
+  .overflow-x-auto {
+    overflow: visible !important;
+  }
+  table {
+    min-width: 0 !important;
+    font-size: 10px;
+  }
+  tr,
+  .break-inside-avoid {
+    break-inside: avoid;
+  }
+  @page {
+    margin: 12mm;
+  }
+}

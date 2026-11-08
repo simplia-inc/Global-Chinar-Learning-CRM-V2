@@ -27,6 +27,8 @@ export const TopBar: React.FC<TopBarProps> = ({
         return 'Students';
       case 'courses':
         return 'Courses & Programs';
+      case 'fees':
+        return 'Batch Fees & Students';
       case 'sheets':
         return 'Google Sheets Integration';
       case 'team':

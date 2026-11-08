@@ -11,6 +11,7 @@ import { CoursesView } from './components/courses/CoursesView';
 import { TeamView } from './components/team/TeamView';
 import { BatchesView } from './components/batches/BatchesView';
 import { SettingsView } from './components/settings/SettingsView';
+import { BatchFeesView } from './components/fees/BatchFeesView';
 import { SheetsIntegrationView } from './components/sheets/SheetsIntegrationView';
 import { LeadFormModal } from './components/leads/LeadFormModal';
 import { LeadDetailsModal } from './components/leads/LeadDetailsModal';
@@ -124,6 +125,8 @@ const MainApp: React.FC = () => {
         return isAdminRole ? <TeamView key={`team-${refreshKey}`} /> : dashboard('team-denied');
       case 'batches':
         return isAdminRole || role === 'trainer' ? <BatchesView /> : dashboard('batches-denied');
+      case 'fees':
+        return isAdminRole ? <BatchFeesView key={`fees-${refreshKey}`} /> : dashboard('fees-denied');
       case 'sheets':
         return isAdminRole ? <SheetsIntegrationView onViewLeadById={handleViewLeadById} /> : dashboard('sheets-denied');
       case 'settings':
