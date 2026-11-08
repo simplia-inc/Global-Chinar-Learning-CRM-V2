@@ -19,6 +19,12 @@ The earlier duplicate `202611050001_school_erp_core.sql` was removed: it defined
 - Admins cannot promote themselves or anyone to `super_admin`, and cannot modify a `super_admin`.
 - Trainers see only assigned batches, their rosters and attendance. Employees see only students they created or from leads they can access.
 
+## Batches, enrolments and fees (added 2026-11-08)
+- Batches have a delivery mode (online / offline / hybrid) and are grouped by start month. Seats, trainers and finance totals come from `batch_overview()`.
+- `batch_fee_roster()` lists every enrolled student with net fee, paid, outstanding, status and next due date. Filters: month, mode, course, batch.
+- `enroll_student()`, `record_enrollment_payment()`, `reverse_payment()` run as the caller (RLS applies). Payments are never edited or deleted; reversals are separate rows with a reason.
+- Money columns are NULL for non-admin callers. The Batch Fees page is Admin / Super Admin only.
+
 ## Application
 Working against the live schema: auth, leads (create/edit/assign/status), follow-ups, courses CRUD, batches (create/status/trainer), students (list/create).
 
