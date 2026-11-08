@@ -12,6 +12,7 @@ import {
   Layers,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import { BrandLogo } from '../common/BrandLogo';
 import { RoleBadge } from '../common/Badge';
 
 export type NavTab = 'dashboard' | 'leads' | 'students' | 'courses' | 'team' | 'batches' | 'fees' | 'sheets' | 'settings';
@@ -109,47 +110,15 @@ export const Sidebar: React.FC<SidebarProps> = ({
   return (
     <div className="flex flex-col h-full bg-[#0B1120] text-slate-200 border-r border-slate-800/80 w-64 select-none">
       {/* Brand Header */}
-      <div className="p-5 border-b border-slate-800/70">
-        <div className="flex items-center gap-3">
-          {/* Chinar Leaf / Tree Logo Crest in Gold & Emerald */}
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#D4AF37] via-[#B48A1B] to-[#0D9488] p-0.5 shadow-md flex items-center justify-center shrink-0">
-            <div className="w-full h-full bg-[#0B1120] rounded-[10px] flex items-center justify-center">
-              <svg
-                viewBox="0 0 24 24"
-                fill="none"
-                xmlns="http://www.w3.org/2000/svg"
-                className="w-6 h-6 text-[#D4AF37]"
-              >
-                {/* Stylized Chinar Leaf SVG */}
-                <path
-                  d="M12 2L13.5 6.5L17 5L15.5 9.5L19.5 9.5L16.5 13L20 15L15 16L15.5 20L12 17.5L8.5 20L9 16L4 15L7.5 13L4.5 9.5L8.5 9.5L7 5L10.5 6.5L12 2Z"
-                  fill="url(#chinarGoldGrad)"
-                  stroke="#EAB308"
-                  strokeWidth="0.75"
-                  strokeLinejoin="round"
-                />
-                <path
-                  d="M12 17.5V22"
-                  stroke="#10B981"
-                  strokeWidth="1.5"
-                  strokeLinecap="round"
-                />
-                <defs>
-                  <linearGradient id="chinarGoldGrad" x1="4" y1="2" x2="20" y2="20" gradientUnits="userSpaceOnUse">
-                    <stop stopColor="#FDE047" />
-                    <stop offset="0.5" stopColor="#D4AF37" />
-                    <stop offset="1" stopColor="#0D9488" />
-                  </linearGradient>
-                </defs>
-              </svg>
-            </div>
-          </div>
+      <div className="px-4 py-5 border-b border-slate-800/70">
+        <div className="flex items-center gap-2.5">
+          <BrandLogo size={44} className="shrink-0 drop-shadow-[0_2px_6px_rgba(212,175,55,0.25)]" />
 
           <div className="min-w-0">
             <h1 className="font-bold text-sm tracking-wide text-white leading-tight uppercase font-sans">
               GLOBAL CHINAR
             </h1>
-            <p className="text-[10px] font-medium tracking-wider text-teal-400 uppercase">
+            <p className="text-[10px] font-medium tracking-wide text-teal-400 uppercase whitespace-nowrap">
               Digital Marketing School
             </p>
           </div>

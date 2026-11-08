@@ -11,6 +11,7 @@ import { CoursesView } from './components/courses/CoursesView';
 import { TeamView } from './components/team/TeamView';
 import { BatchesView } from './components/batches/BatchesView';
 import { SettingsView } from './components/settings/SettingsView';
+import { BrandLogo } from './components/common/BrandLogo';
 import { BatchFeesView } from './components/fees/BatchFeesView';
 import { SheetsIntegrationView } from './components/sheets/SheetsIntegrationView';
 import { LeadFormModal } from './components/leads/LeadFormModal';
@@ -37,27 +38,7 @@ const MainApp: React.FC = () => {
   if (isLoading) {
     return (
       <div className="min-h-screen bg-[#070B14] flex flex-col items-center justify-center p-4 text-white font-sans select-none">
-        <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-[#D4AF37] via-[#B48A1B] to-[#0D9488] p-0.5 shadow-xl mb-4 animate-pulse">
-          <div className="w-full h-full bg-[#070B14] rounded-[14px] flex items-center justify-center">
-            <svg
-              viewBox="0 0 24 24"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-              className="w-8 h-8 text-[#D4AF37]"
-            >
-              <path
-                d="M12 2L13.5 6.5L17 5L15.5 9.5L19.5 9.5L16.5 13L20 15L15 16L15.5 20L12 17.5L8.5 20L9 16L4 15L7.5 13L4.5 9.5L8.5 9.5L7 5L10.5 6.5L12 2Z"
-                fill="#D4AF37"
-              />
-              <path
-                d="M12 17.5V22"
-                stroke="#10B981"
-                strokeWidth="1.5"
-                strokeLinecap="round"
-              />
-            </svg>
-          </div>
-        </div>
+        <BrandLogo size={96} className="mb-4 animate-pulse" />
 
         <h1 className="text-sm font-bold tracking-wider uppercase text-white mb-1">
           GLOBAL CHINAR DIGITAL MARKETING SCHOOL

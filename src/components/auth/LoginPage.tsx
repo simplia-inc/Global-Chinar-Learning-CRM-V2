@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Eye, EyeOff, Lock, Mail, AlertCircle, ArrowRight, RefreshCw, CheckCircle2 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import { BrandLogo } from '../common/BrandLogo';
 import { ConnectionBanner } from '../common/ConnectionBanner';
 import { Modal } from '../common/Modal';
 
@@ -86,36 +87,8 @@ export const LoginPage: React.FC = () => {
 
           {/* Brand Header */}
           <div className="text-center mb-6 relative">
-            <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-br from-[#D4AF37] via-[#B48A1B] to-[#0D9488] p-0.5 shadow-lg mb-3">
-              <div className="w-full h-full bg-[#0F172A] rounded-[14px] flex items-center justify-center">
-                <svg
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="w-8 h-8 text-[#D4AF37]"
-                >
-                  <path
-                    d="M12 2L13.5 6.5L17 5L15.5 9.5L19.5 9.5L16.5 13L20 15L15 16L15.5 20L12 17.5L8.5 20L9 16L4 15L7.5 13L4.5 9.5L8.5 9.5L7 5L10.5 6.5L12 2Z"
-                    fill="url(#loginChinarGrad)"
-                    stroke="#EAB308"
-                    strokeWidth="0.75"
-                    strokeLinejoin="round"
-                  />
-                  <path
-                    d="M12 17.5V22"
-                    stroke="#10B981"
-                    strokeWidth="1.5"
-                    strokeLinecap="round"
-                  />
-                  <defs>
-                    <linearGradient id="loginChinarGrad" x1="4" y1="2" x2="20" y2="20" gradientUnits="userSpaceOnUse">
-                      <stop stopColor="#FDE047" />
-                      <stop offset="0.5" stopColor="#D4AF37" />
-                      <stop offset="1" stopColor="#0D9488" />
-                    </linearGradient>
-                  </defs>
-                </svg>
-              </div>
+            <div className="flex justify-center mb-3">
+              <BrandLogo size={84} className="drop-shadow-[0_4px_14px_rgba(212,175,55,0.3)]" />
             </div>
 
             <h1 className="text-xl font-bold tracking-tight text-white uppercase">
