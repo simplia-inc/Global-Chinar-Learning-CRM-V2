@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { parseSheetUrl, SheetError } from '../server/sheets/url.js';
 import { parseCsv } from '../server/sheets/csv.js';
-import { suggestMapping, buildLeadRows, validateMapping, cleanPhone } from '../server/sheets/mapping.js';
+import { suggestMapping, buildLeadRows, validateMapping, cleanPhone, deriveStatus } from '../server/sheets/mapping.js';
 import { fetchPublicTable } from '../server/sheets/fetchers.js';
 import { runSync } from '../server/sheets/service.js';
 
@@ -55,13 +55,14 @@ test('builds lead rows: validation, phone cleanup, keys, in-sheet duplicates, st
   const m = { external_id: 'ID', full_name: 'Name', phone: 'Phone', email: 'Email', interested_course: 'Course', status: 'Status', priority: 'Priority' };
   const r = buildLeadRows(table, m);
   assert.equal(r.scanned, 5);
-  assert.equal(r.valid.length, 3);
-  const [a, b, c] = r.valid;
+  assert.equal(r.valid.length, 4);
+  const [a, unnamed, b, c] = r.valid;
+  assert.equal(unnamed.key, 'id:L2'); assert.equal(unnamed.name_placeholder, true); // phone but no name: kept under a placeholder
   assert.equal(a.key, 'id:L1'); assert.equal(a.phone, '+919876543210'); assert.equal(a.email, 'asha@example.com');
   assert.equal(a.status, 'follow_up'); assert.equal(a.priority, 'normal'); assert.equal(a.row_number, 2);
   assert.equal(b.key, 'id:L4'); assert.equal(b.status, undefined); assert.equal(b.priority, 'high');
   assert.equal(c.key, 'phone:9999911111');
-  assert.deepEqual(r.errors.map((e) => [e.row_number, e.error_type]), [[4, 'invalid'], [5, 'invalid']]);
+  assert.deepEqual(r.errors.map((e) => [e.row_number, e.error_type]), [[5, 'invalid']]); // only the row with no usable contact is rejected
   assert.equal(cleanPhone('12'), '');
   const again = buildLeadRows(table, m).valid[0].hash;
   assert.equal(again, a.hash);
@@ -137,4 +138,58 @@ test('runSync: invalid mapping fails clearly without importing', async () => {
   const db = fakeDb({ conn: { ...conn, column_mapping: { full_name: 'Nope', phone: 'Phone' } } });
   const r = await runSync(db, 'c1', 'manual', { fetchImpl: async () => resp(200, 'Name,Phone\nA,9876543210', { 'content-type': 'text/csv' }) });
   assert.equal(r.status, 'failed'); assert.match(r.error, /not found in the worksheet/);
+});
+
+test('maps a sheet whose headers are Name / Number / Remarks / Uzair Note', () => {
+  const headers = ['Name', 'Number', 'Remarks', 'Uzair Note'];
+  const m = suggestMapping(headers);
+  assert.deepEqual(m, { full_name: 'Name', phone: 'Number', notes: 'Remarks', extra_notes: 'Uzair Note' });
+  assert.deepEqual(validateMapping(m, headers), []);
+});
+
+test('a caller with a number but no name is kept under a placeholder name', () => {
+  const r = buildLeadRows([['Name', 'Number', 'Remarks'], ['', '90000 00001', 'No Answer'], ['', '', 'nothing usable']], { full_name: 'Name', phone: 'Number', notes: 'Remarks' });
+  assert.equal(r.valid.length, 1);
+  assert.equal(r.valid[0].full_name, 'Unnamed lead 9000000001');
+  assert.equal(r.valid[0].name_placeholder, true);
+  assert.deepEqual(r.errors.map((e) => [e.row_number, e.error_type]), [[3, 'invalid']]);
+});
+
+test('additional notes column is appended with its heading; stray cells beyond the headers are ignored', () => {
+  const t = [['Name', 'Number', 'Remarks', 'Uzair Note'], ['Test A', '9000000002', 'will visit', 'Sale', '1000', '', '9000000002']];
+  const r = buildLeadRows(t, { full_name: 'Name', phone: 'Number', notes: 'Remarks', extra_notes: 'Uzair Note' });
+  assert.equal(r.valid[0].notes, 'will visit\nUzair Note: Sale');
+});
+
+test('status suggestion: conservative, opt-in, and never treats "ni" as not interested', () => {
+  assert.equal(deriveStatus('will visit tomorrow / NI'), 'follow_up');
+  assert.equal(deriveStatus('Anantnag shared qr will pay/ni'), 'follow_up');
+  assert.equal(deriveStatus('Asked to share the Broucher'), 'follow_up');
+  assert.equal(deriveStatus('call back 10am'), 'follow_up');
+  assert.equal(deriveStatus('x\nUzair Note: Sale'), 'qualified');
+  assert.equal(deriveStatus('No enquiry'), 'lost');
+  assert.equal(deriveStatus('Clicked By Mistake'), 'lost');
+  assert.equal(deriveStatus('No Answer'), undefined);
+  assert.equal(deriveStatus('Switched Off'), undefined);
+  const t = [['Name', 'Number', 'Remarks'], ['A', '9000000003', 'will visit'], ['B', '9000000004', 'No Answer']];
+  const off = buildLeadRows(t, { full_name: 'Name', phone: 'Number', notes: 'Remarks' });
+  assert.deepEqual(off.valid.map((v) => v.status), [undefined, undefined]);
+  const on = buildLeadRows(t, { full_name: 'Name', phone: 'Number', notes: 'Remarks', auto_status: 'on' });
+  assert.deepEqual(on.valid.map((v) => v.status), ['follow_up', undefined]);
+  const explicit = buildLeadRows([['Name', 'Number', 'Status'], ['C', '9000000005', 'Lost']], { full_name: 'Name', phone: 'Number', status: 'Status', auto_status: 'on' });
+  assert.equal(explicit.valid[0].status, 'lost');
+});
+
+test('mapping validation accepts the status-suggestion switch only as "on"', () => {
+  const h = ['Name', 'Number'];
+  assert.deepEqual(validateMapping({ full_name: 'Name', phone: 'Number', auto_status: 'on' }, h), []);
+  assert.ok(validateMapping({ full_name: 'Name', phone: 'Number', auto_status: 'yes' }, h).length);
+});
+
+test('public fetch: a link without a tab number falls back to the first tab', async () => {
+  const seen = [];
+  const impl = async (url) => { seen.push(url); return url.includes('gid=0') ? resp(404) : resp(200, 'a\n1', { 'content-type': 'text/csv' }); };
+  const t = await fetchPublicTable(ID, '0', { fetchImpl: impl });
+  assert.deepEqual(t, [['a'], ['1']]);
+  assert.ok(seen[0].includes('gid=0') && !seen[1].includes('gid='));
 });

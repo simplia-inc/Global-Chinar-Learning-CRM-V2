@@ -10,7 +10,8 @@ const FIELDS: Array<{ key: keyof ColumnMapping; label: string; hint?: string; re
   { key: 'email', label: 'Email', required: 'Phone or email' },
   { key: 'interested_course', label: 'Interested course', hint: 'Saved to the CRM field interested_course' },
   { key: 'source', label: 'Lead source' },
-  { key: 'notes', label: 'Notes' },
+  { key: 'notes', label: 'Notes / remarks' },
+  { key: 'extra_notes', label: 'Additional notes', hint: 'A second remarks column. Added to the lead’s notes with its heading' },
   { key: 'status', label: 'Status', hint: 'Used only when a lead is first created' },
   { key: 'priority', label: 'Priority', hint: 'Used only when a lead is first created' },
   { key: 'external_id', label: 'Lead ID (recommended)', hint: 'A unique ID column prevents duplicates even if phone numbers change' },
@@ -32,6 +33,10 @@ const MappingEditor: React.FC<{ headers: string[]; value: ColumnMapping; onChang
         {f.hint && <span className="block mt-1 text-[10px] text-slate-400">{f.hint}</span>}
       </label>
     ))}
+    <label className="sm:col-span-2 flex items-start gap-2 text-xs text-slate-700 p-3 rounded-lg bg-slate-50 border border-slate-200">
+      <input type="checkbox" checked={value.auto_status === 'on'} onChange={(e) => { const next = { ...value }; if (e.target.checked) next.auto_status = 'on'; else delete next.auto_status; onChange(next); }} className="accent-teal-600 mt-0.5" />
+      <span><strong>Suggest a status from the remarks</strong> for new leads that have no status column. “Will visit / call back / brochure shared” becomes Follow-up, “Sale” becomes Qualified, “No enquiry / clicked by mistake” becomes Lost, anything else stays New. Only used when a lead is first created; the CRM manages status afterwards.</span>
+    </label>
   </div>
 );
 
@@ -214,7 +219,7 @@ export const SheetsIntegrationView: React.FC<Props> = ({ onViewLeadById }) => {
                     </>
                   ) : (
                     <>
-                      <ul className="text-xs text-slate-600 space-y-0.5">{FIELDS.filter((f) => active.column_mapping[f.key]).map((f) => <li key={f.key}><span className="text-slate-400">{f.label}:</span> <span className="font-medium text-slate-800">{active.column_mapping[f.key]}</span></li>)}</ul>
+                      <ul className="text-xs text-slate-600 space-y-0.5">{FIELDS.filter((f) => active.column_mapping[f.key]).map((f) => <li key={f.key}><span className="text-slate-400">{f.label}:</span> <span className="font-medium text-slate-800">{active.column_mapping[f.key]}</span></li>)}{active.column_mapping.auto_status === 'on' && <li><span className="text-slate-400">Status suggestion:</span> <span className="font-medium text-slate-800">On (from remarks)</span></li>}</ul>
                       <button type="button" onClick={() => setEditMapping({ ...active.column_mapping })} className="px-3 py-1.5 text-xs font-medium text-slate-700 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-lg cursor-pointer">Edit mapping</button>
                     </>
                   )}

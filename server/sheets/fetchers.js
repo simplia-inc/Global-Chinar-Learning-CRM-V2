@@ -59,9 +59,7 @@ export async function readLimited(res) {
 }
 
 // Method A: public "Anyone with the link" CSV export.
-export async function fetchPublicTable(spreadsheetId, gid, opts = {}) {
-  assertIds(spreadsheetId, gid);
-  const url = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/export?format=csv&gid=${gid}`;
+async function fetchCsv(url, opts) {
   return withRetry(async () => {
     const res = await safeGet(url, opts);
     if (res.status === 401 || res.status === 403) {
@@ -80,6 +78,18 @@ export async function fetchPublicTable(spreadsheetId, gid, opts = {}) {
     }
     return parseCsv(await readLimited(res));
   });
+}
+
+export async function fetchPublicTable(spreadsheetId, gid, opts = {}) {
+  assertIds(spreadsheetId, gid);
+  const base = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/export?format=csv`;
+  try {
+    return await fetchCsv(`${base}&gid=${gid}`, opts);
+  } catch (e) {
+    // A link without a gid means "first tab", whose id is not always 0. Retry without a gid in that case.
+    if (gid === '0' && e instanceof SheetError && e.code === 'NOT_FOUND') return fetchCsv(base, opts);
+    throw e;
+  }
 }
 
 // Best-effort tab list for public sheets (Google exposes no stable API without credentials).

@@ -1,7 +1,7 @@
 import { getSupabaseClient } from '../lib/supabase';
 
 export type SheetMethod = 'shared_link' | 'service_account';
-export type ColumnMapping = Partial<Record<'full_name' | 'email' | 'phone' | 'interested_course' | 'source' | 'notes' | 'status' | 'priority' | 'external_id', string>>;
+export type ColumnMapping = Partial<Record<'full_name' | 'email' | 'phone' | 'interested_course' | 'source' | 'notes' | 'extra_notes' | 'auto_status' | 'status' | 'priority' | 'external_id', string>>;
 
 export interface SheetConnection {
   id: string; name: string | null; method: SheetMethod; spreadsheet_id: string; worksheet_gid: string; worksheet_title: string | null;
