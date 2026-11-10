@@ -25,6 +25,11 @@ The earlier duplicate `202611050001_school_erp_core.sql` was removed: it defined
 - `enroll_student()`, `record_enrollment_payment()`, `reverse_payment()` run as the caller (RLS applies). Payments are never edited or deleted; reversals are separate rows with a reason.
 - Money columns are NULL for non-admin callers. The Batch Fees page is Admin / Super Admin only.
 
+## Lead conversion and student fee automation (added 2026-11-09)
+- A database trigger on `leads` creates (or links) exactly one student when a lead becomes Converted (also when a lead is inserted as Converted). It is idempotent: re-converting never duplicates, never overwrites staff edits, and never deletes lead data. An existing unlinked student with the same name and phone is linked instead of duplicated.
+- A trigger on `students` creates a `student_fee_accounts` row for every new student (manual add, lead conversion, import).
+- Fee management is per student: fee + discount on the fee account (0 = use batch enrolment fees), installments = invoices, payments and reversals = existing payment ledger. Admin / Super Admin only.
+
 ## Application
 Working against the live schema: auth, leads (create/edit/assign/status), follow-ups, courses CRUD, batches (create/status/trainer), students (list/create).
 
