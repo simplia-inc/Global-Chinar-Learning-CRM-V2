@@ -227,6 +227,14 @@ export const leadService = {
     }
   },
 
+  // After a lead is converted, the database creates (or links) the student. Returns it so the UI can confirm.
+  async getStudentForLead(leadId: string): Promise<{ student_code: string | null; full_name: string } | null> {
+    const client = getSupabaseClient();
+    if (!client) return null;
+    const { data } = await client.from('students').select('student_code, full_name').eq('source_lead_id', leadId).maybeSingle();
+    return (data as { student_code: string | null; full_name: string } | null) ?? null;
+  },
+
   async updateLead(id: string, updates: Partial<Lead>): Promise<{ data: Lead | null; error: Error | null }> {
     const client = getSupabaseClient();
     if (!client) return { data: null, error: new Error('Supabase client not initialized') };

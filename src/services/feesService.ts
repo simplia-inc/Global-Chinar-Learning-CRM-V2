@@ -24,6 +24,19 @@ export interface PaymentRow {
   reference_number: string | null; payment_date: string; notes: string | null; reversal_reason: string | null; is_reversed: boolean;
 }
 
+export interface StudentFeeRow {
+  student_id: string; student_code: string | null; full_name: string; phone: string | null; student_status: string; admission_date: string | null;
+  batches: string | null; total_fee: number | null; discount: number | null; net_fee: number | null; invoiced: number | null; paid: number | null;
+  pending: number | null; fee_status: FeeStatus | null; next_due: string | null; last_payment_at: string | null; installments: number;
+}
+export interface StudentFeeDetail {
+  net_fee: number;
+  account: { total_fee: number; discount_amount: number; notes: string | null } | null;
+  enrollments: Array<{ id: string; batch_name: string; delivery_mode: DeliveryMode; agreed_fee: number; discount: number; status: string }>;
+  installments: Array<{ id: string; invoice_number: string; due_date: string | null; total_amount: number; status: string; enrollment_id: string | null; notes: string | null; paid: number }>;
+  payments: PaymentRow[];
+}
+
 const monthToDate = (m?: string) => (m && /^\d{4}-\d{2}$/.test(m) ? `${m}-01` : null);
 const orNull = (v?: string) => (v && v !== 'all' ? v : null);
 const fail = (e: { message: string }) => new Error(e.message);
@@ -68,6 +81,42 @@ export const feesService = {
     const { data, error } = await db.rpc('enrollment_payments', { p_enrollment: enrollmentId });
     if (error) throw fail(error);
     return (data || []) as PaymentRow[];
+  },
+  // Per-student fee management (every student has a fee account, created automatically)
+  async studentOverview(search = '', status = ''): Promise<StudentFeeRow[]> {
+    const db = getSupabaseClient(); if (!db) throw new Error('Supabase is not configured.');
+    const { data, error } = await db.rpc('student_fee_overview', { p_search: search.trim() || null, p_status: status && status !== 'all' ? status : null });
+    if (error) throw fail(error);
+    return (data || []) as StudentFeeRow[];
+  },
+  async studentDetail(studentId: string): Promise<StudentFeeDetail> {
+    const db = getSupabaseClient(); if (!db) throw new Error('Supabase is not configured.');
+    const { data, error } = await db.rpc('student_fee_detail', { p_student: studentId });
+    if (error) throw fail(error);
+    return data as StudentFeeDetail;
+  },
+  async setStudentFee(studentId: string, total: number, discount: number, notes: string): Promise<void> {
+    const db = getSupabaseClient(); if (!db) throw new Error('Supabase is not configured.');
+    const { error } = await db.rpc('set_student_fee', { p_student: studentId, p_total: total, p_discount: discount, p_notes: notes || null });
+    if (error) throw fail(error);
+  },
+  async addInstallment(studentId: string, amount: number, dueDate: string, notes: string): Promise<void> {
+    const db = getSupabaseClient(); if (!db) throw new Error('Supabase is not configured.');
+    const { error } = await db.rpc('add_installment', { p_student: studentId, p_amount: amount, p_due: dueDate || null, p_notes: notes || null });
+    if (error) throw fail(error);
+  },
+  async voidInstallment(invoiceId: string): Promise<void> {
+    const db = getSupabaseClient(); if (!db) throw new Error('Supabase is not configured.');
+    const { error } = await db.rpc('void_installment', { p_invoice: invoiceId });
+    if (error) throw fail(error);
+  },
+  async recordStudentPayment(p: { studentId: string; amount: number; method: PaymentMethod; reference?: string; paidAt?: string; notes?: string }): Promise<void> {
+    const db = getSupabaseClient(); if (!db) throw new Error('Supabase is not configured.');
+    const { error } = await db.rpc('record_student_payment', {
+      p_student: p.studentId, p_amount: p.amount, p_method: p.method, p_reference: p.reference || null,
+      p_paid_at: p.paidAt ? new Date(p.paidAt).toISOString() : null, p_notes: p.notes || null,
+    });
+    if (error) throw fail(error);
   },
   async listCourses(): Promise<Array<{ id: string; name: string; fee_amount: number }>> {
     const db = getSupabaseClient(); if (!db) return [];

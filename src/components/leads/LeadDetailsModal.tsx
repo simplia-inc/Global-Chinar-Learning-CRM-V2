@@ -42,6 +42,7 @@ export const LeadDetailsModal: React.FC<LeadDetailsModalProps> = ({
 
   // Quick status update state
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
+  const [conversionNote, setConversionNote] = useState<string | null>(null);
 
   // Follow-up form state
   const [showFollowUpForm, setShowFollowUpForm] = useState(false);
@@ -99,6 +100,12 @@ export const LeadDetailsModal: React.FC<LeadDetailsModalProps> = ({
     } else if (data) {
       setLead(data);
       onLeadUpdated();
+      if (newStatus === 'converted') {
+        const student = await leadService.getStudentForLead(lead.id);
+        setConversionNote(student ? `Student record ${student.student_code || ''} (${student.full_name}) is now in the Students section, with fee management ready.` : 'Converted. The student record is in the Students section.');
+      } else {
+        setConversionNote(null);
+      }
     }
   };
 
@@ -248,6 +255,7 @@ export const LeadDetailsModal: React.FC<LeadDetailsModalProps> = ({
                 <option value="converted">Converted</option>
                 <option value="lost">Lost</option>
               </select>
+              {conversionNote && <p role="status" className="mt-2 text-[11px] font-medium text-emerald-700">{conversionNote}</p>}
             </div>
 
             <div>

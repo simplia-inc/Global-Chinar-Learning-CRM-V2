@@ -12,7 +12,7 @@ import { TeamView } from './components/team/TeamView';
 import { BatchesView } from './components/batches/BatchesView';
 import { SettingsView } from './components/settings/SettingsView';
 import { BrandLogo } from './components/common/BrandLogo';
-import { BatchFeesView } from './components/fees/BatchFeesView';
+import { FeesView } from './components/fees/FeesView';
 import { SheetsIntegrationView } from './components/sheets/SheetsIntegrationView';
 import { LeadFormModal } from './components/leads/LeadFormModal';
 import { LeadDetailsModal } from './components/leads/LeadDetailsModal';
@@ -26,6 +26,7 @@ const MainApp: React.FC = () => {
   // Lead Modals
   const [isCreateLeadOpen, setIsCreateLeadOpen] = useState(false);
   const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null);
+  const [feeStudentId, setFeeStudentId] = useState<string | null>(null);
   const [editingLead, setEditingLead] = useState<Lead | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
 
@@ -99,7 +100,7 @@ const MainApp: React.FC = () => {
           />
         );
       case 'students':
-        return isAdminRole ? <StudentsView key={`students-${refreshKey}`} /> : dashboard('students-denied');
+        return isAdminRole ? <StudentsView key={`students-${refreshKey}`} onManageFees={(id) => { setFeeStudentId(id); setCurrentTab('fees'); }} /> : dashboard('students-denied');
       case 'courses':
         return isAdminRole ? <CoursesView key={`courses-${refreshKey}`} /> : dashboard('courses-denied');
       case 'team':
@@ -107,7 +108,7 @@ const MainApp: React.FC = () => {
       case 'batches':
         return isAdminRole || role === 'trainer' ? <BatchesView /> : dashboard('batches-denied');
       case 'fees':
-        return isAdminRole ? <BatchFeesView key={`fees-${refreshKey}`} /> : dashboard('fees-denied');
+        return isAdminRole ? <FeesView key={`fees-${refreshKey}`} openStudentId={feeStudentId} onOpenedStudent={() => setFeeStudentId(null)} /> : dashboard('fees-denied');
       case 'sheets':
         return isAdminRole ? <SheetsIntegrationView onViewLeadById={handleViewLeadById} /> : dashboard('sheets-denied');
       case 'settings':
