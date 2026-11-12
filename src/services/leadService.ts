@@ -235,6 +235,15 @@ export const leadService = {
     return (data as { student_code: string | null; full_name: string } | null) ?? null;
   },
 
+  // Admin only (enforced in the database). Follow-ups and assignment history are deleted with the lead; a linked student is kept.
+  async deleteLeads(leadIds: string[]): Promise<{ deleted: number; error: Error | null }> {
+    const client = getSupabaseClient();
+    if (!client) return { deleted: 0, error: new Error('Supabase client not initialized') };
+    const { data, error } = await client.rpc('delete_leads', { p_ids: leadIds });
+    if (error) return { deleted: 0, error: new Error(error.message) };
+    return { deleted: Number(data) || 0, error: null };
+  },
+
   async updateLead(id: string, updates: Partial<Lead>): Promise<{ data: Lead | null; error: Error | null }> {
     const client = getSupabaseClient();
     if (!client) return { data: null, error: new Error('Supabase client not initialized') };

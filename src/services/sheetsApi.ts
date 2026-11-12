@@ -19,7 +19,7 @@ export interface Inspection {
   ok: true; method: SheetMethod; spreadsheetId: string; gid: string; title: string | null; tabs: Array<{ gid: string; title: string }>;
   worksheetTitle: string | null; headers: string[]; rowCount: number; suggestedMapping: ColumnMapping;
 }
-export interface Capabilities { serviceAccountConfigured: boolean; serviceAccountEmail: string | null; schedulerAvailable: boolean }
+export interface Capabilities { serviceAccountConfigured: boolean; serviceAccountEmail: string | null; schedulerAvailable: boolean; schedulerSource?: 'server' | 'supabase' | null }
 
 async function call<T>(path: string, method: string, body?: unknown): Promise<T> {
   const client = getSupabaseClient();

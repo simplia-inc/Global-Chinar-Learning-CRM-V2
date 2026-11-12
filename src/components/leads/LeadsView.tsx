@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { Search, RefreshCw, SlidersHorizontal, ChevronLeft, ChevronRight, UserPlus, CalendarPlus, X } from 'lucide-react';
+import { Search, RefreshCw, SlidersHorizontal, ChevronLeft, ChevronRight, UserPlus, CalendarPlus, X, Trash2 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { leadService } from '../../services/leadService';
 import { teamService } from '../../services/teamService';
@@ -106,6 +106,17 @@ export const LeadsView: React.FC<LeadsViewProps> = ({ onSelectLead }) => {
     setBulkAssignee(''); await fetchLeads();
   };
 
+  const doBulkDelete = async () => {
+    if (selected.size === 0) return;
+    const n = selected.size;
+    if (!window.confirm(`Permanently delete ${n} lead${n === 1 ? '' : 's'}?\n\nTheir follow-ups and assignment history are deleted too. Any student already created from a lead is kept. Leads that came from Google Sheets will not be imported again.\n\nThis cannot be undone.`)) return;
+    setBusy(true); setErrorMsg(null);
+    const { deleted, error } = await leadService.deleteLeads([...selected]);
+    setBusy(false);
+    if (error) setErrorMsg(error.message); else setNotice(`${deleted} lead${deleted === 1 ? '' : 's'} deleted.`);
+    await fetchLeads();
+  };
+
   const doBulkFollowUp = async () => {
     if (!fuWhen || selected.size === 0) return;
     setBusy(true); setErrorMsg(null);
@@ -178,6 +189,9 @@ export const LeadsView: React.FC<LeadsViewProps> = ({ onSelectLead }) => {
             </span>
           )}
           <button type="button" onClick={() => setFuOpen((v) => !v)} className="inline-flex items-center gap-1 px-3 py-1.5 bg-teal-600 hover:bg-teal-500 font-semibold rounded-md cursor-pointer"><CalendarPlus className="w-3.5 h-3.5" />Schedule follow-up</button>
+          {isAdmin && (
+            <button type="button" onClick={() => void doBulkDelete()} disabled={busy} className="inline-flex items-center gap-1 px-3 py-1.5 bg-rose-600 hover:bg-rose-500 font-semibold rounded-md cursor-pointer disabled:opacity-50"><Trash2 className="w-3.5 h-3.5" />Delete</button>
+          )}
           <button type="button" onClick={() => setSelected(new Set())} className="ml-auto inline-flex items-center gap-1 text-slate-300 hover:text-white cursor-pointer"><X className="w-3.5 h-3.5" />Clear</button>
           {fuOpen && (
             <div className="w-full flex flex-wrap items-center gap-2 pt-2 border-t border-slate-700">

@@ -197,6 +197,9 @@ export const SheetsIntegrationView: React.FC<Props> = ({ onViewLeadById }) => {
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 px-5 pb-5">
                 <div className="space-y-3">
                   <h3 className="text-xs font-semibold text-slate-900 flex items-center gap-1.5"><Clock className="w-3.5 h-3.5 text-teal-600" /> Automatic synchronisation</h3>
+                  {caps?.schedulerAvailable && caps.schedulerSource === 'supabase' && (
+                    <p className="p-2.5 rounded-lg bg-emerald-50 border border-emerald-200 text-[11px] text-emerald-900">Automatic sync is active. It runs on Supabase and checks every minute, so it keeps working even when nobody has the CRM open.{active.method === 'service_account' ? ' Private (service-account) sheets are synced by the web server scheduler, which needs SUPABASE_SERVICE_ROLE_KEY on the server.' : ''}</p>
+                  )}
                   {caps && !caps.schedulerAvailable && (
                     <p className="p-2.5 rounded-lg bg-amber-50 border border-amber-200 text-[11px] text-amber-900">The scheduler is not active on the server yet. Add <code className="font-mono">SUPABASE_SERVICE_ROLE_KEY</code> to the server’s environment variables (never a VITE_ variable) and restart the app. Manual sync works without it.</p>
                   )}

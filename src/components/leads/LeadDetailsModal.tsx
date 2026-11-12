@@ -16,6 +16,7 @@ import {
 import { Modal } from '../common/Modal';
 import { StatusBadge, PriorityBadge, FollowUpStatusBadge } from '../common/Badge';
 import { leadService } from '../../services/leadService';
+import { useAuth } from '../../context/AuthContext';
 import { teamService } from '../../services/teamService';
 import type { Lead, LeadAssignment, FollowUp, LeadStatus, Profile, ContactMethod } from '../../types/database';
 
@@ -34,6 +35,10 @@ export const LeadDetailsModal: React.FC<LeadDetailsModalProps> = ({
   onEditLead,
   onLeadUpdated,
 }) => {
+  const { role } = useAuth();
+  const isAdmin = role === 'super_admin' || role === 'admin';
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   const [lead, setLead] = useState<Lead | null>(null);
   const [assignments, setAssignments] = useState<LeadAssignment[]>([]);
   const [followUps, setFollowUps] = useState<FollowUp[]>([]);
@@ -444,6 +449,34 @@ export const LeadDetailsModal: React.FC<LeadDetailsModalProps> = ({
                   </div>
                 ))}
               </div>
+            </div>
+          )}
+
+          {isAdmin && (
+            <div className="border border-rose-200 bg-rose-50/50 rounded-xl p-4">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <h4 className="text-sm font-semibold text-rose-800">Delete this lead</h4>
+                  <p className="text-[11px] text-rose-700/80 mt-0.5">Removes the lead with its follow-ups and assignment history. A student already created from it is kept.</p>
+                </div>
+                <button
+                  type="button"
+                  disabled={deleting}
+                  onClick={async () => {
+                    if (!window.confirm(`Permanently delete "${lead.full_name}"?\n\nIts follow-ups and assignment history are deleted too. If it came from Google Sheets it will not be imported again.\n\nThis cannot be undone.`)) return;
+                    setDeleting(true); setDeleteError(null);
+                    const { error: delErr } = await leadService.deleteLeads([lead.id]);
+                    setDeleting(false);
+                    if (delErr) { setDeleteError(delErr.message); return; }
+                    onLeadUpdated();
+                    onClose();
+                  }}
+                  className="px-3 py-1.5 text-xs font-semibold text-white bg-rose-600 hover:bg-rose-700 rounded-lg cursor-pointer disabled:opacity-50"
+                >
+                  {deleting ? 'Deleting…' : 'Delete lead'}
+                </button>
+              </div>
+              {deleteError && <p role="alert" className="mt-2 text-[11px] text-rose-700">{deleteError}</p>}
             </div>
           )}
         </div>
