@@ -106,7 +106,10 @@ export async function fetchPublicTabs(spreadsheetId, opts = {}) {
 }
 
 // Method B: Google service account (private spreadsheets). Credentials live only in server env.
-export function loadServiceAccount(env = process.env) {
+// Works in Node (the web server) and in Deno (the Supabase Edge Function that runs scheduled syncs).
+const defaultEnv = () => globalThis.process?.env ?? globalThis.Deno?.env?.toObject?.() ?? {};
+
+export function loadServiceAccount(env = defaultEnv()) {
   try {
     if (env.GOOGLE_SERVICE_ACCOUNT_JSON) {
       const j = JSON.parse(env.GOOGLE_SERVICE_ACCOUNT_JSON);

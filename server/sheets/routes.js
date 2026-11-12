@@ -64,11 +64,19 @@ export function sheetsRouter() {
   r.use(express.json({ limit: '50kb' }));
   r.use(authenticate);
 
-  r.get('/capabilities', (req, res) => {
+  r.get('/capabilities', async (req, res) => {
     const sa = loadServiceAccount();
+    // Automatic sync can run on this web server (needs SUPABASE_SERVICE_ROLE_KEY) or inside Supabase (pg_cron + Edge Function).
+    const serverScheduler = Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY);
+    let supabaseScheduler = false;
+    try {
+      const { data } = await req.db.rpc('sheet_scheduler_status');
+      supabaseScheduler = data?.active === true;
+    } catch { /* treated as not available */ }
     res.json({
       serviceAccountConfigured: Boolean(sa), serviceAccountEmail: sa?.email || null,
-      schedulerAvailable: Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY),
+      schedulerAvailable: serverScheduler || supabaseScheduler,
+      schedulerSource: serverScheduler ? 'server' : supabaseScheduler ? 'supabase' : null,
     });
   });
 
