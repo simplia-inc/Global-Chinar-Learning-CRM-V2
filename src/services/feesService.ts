@@ -95,6 +95,11 @@ export const feesService = {
     if (error) throw fail(error);
     return data as StudentFeeDetail;
   },
+  async assignToBatch(studentId: string, batchId: string): Promise<void> {
+    const db = getSupabaseClient(); if (!db) throw new Error('Supabase is not configured.');
+    const { error } = await db.rpc('assign_student_to_batch', { p_student: studentId, p_batch: batchId });
+    if (error) throw fail(error);
+  },
   async setStudentFee(studentId: string, total: number, discount: number, notes: string): Promise<void> {
     const db = getSupabaseClient(); if (!db) throw new Error('Supabase is not configured.');
     const { error } = await db.rpc('set_student_fee', { p_student: studentId, p_total: total, p_discount: discount, p_notes: notes || null });

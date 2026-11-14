@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { UnassignedStudents } from './UnassignedStudents';
 import { RefreshCw, Download, Printer, Plus, Wallet, Users, IndianRupee, AlertTriangle, ArrowUp, ArrowDown, History, Search } from 'lucide-react';
 import { Modal } from '../common/Modal';
 import {
@@ -250,11 +251,13 @@ export const BatchFeesView: React.FC = () => {
         )}
       </section>
 
+      <UnassignedStudents onAssigned={async (m) => { setNotice(m); await load(); }} />
+
       <section className="bg-white border border-slate-200 rounded-xl shadow-xs overflow-hidden">
         <header className="px-5 py-3.5 border-b border-slate-100"><h2 className="text-sm font-semibold text-slate-900">Students &amp; payments</h2><p className="text-[11px] text-slate-500">Click a column heading to sort.</p></header>
         {loading ? <div className="p-6 space-y-2">{[0, 1, 2, 3].map((i) => <div key={i} className="h-10 bg-slate-100 rounded animate-pulse" />)}</div> : visibleRows.length === 0 ? (
           <div className="p-10 text-center"><Users className="w-8 h-8 text-slate-300 mx-auto" /><p className="mt-3 text-sm font-semibold text-slate-800">No students found</p>
-            <p className="mt-1 text-xs text-slate-500">{rows.length === 0 ? 'Enrol students into a batch to see their fees here.' : 'Try clearing the search or filters.'}</p></div>
+            <p className="mt-1 text-xs text-slate-500">{rows.length === 0 ? 'Assign students to a batch (see “Students not in a batch yet” above) or enrol them to see their fees here.' : 'Try clearing the search or filters.'}</p></div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-xs text-left min-w-[860px]">
