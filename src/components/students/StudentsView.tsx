@@ -3,6 +3,7 @@ import { Search, Plus, RefreshCw, Users, AlertCircle } from 'lucide-react';
 import { getSupabaseClient } from '../../lib/supabase';
 import { useAuth } from '../../context/AuthContext';
 import { Modal } from '../common/Modal';
+import { feesService, monthLabel, MODE_LABEL, type BatchOverviewRow } from '../../services/feesService';
 
 type Student = {
   id: string; student_code: string | null; full_name: string; email: string | null;
@@ -27,6 +28,8 @@ export const StudentsView: React.FC<{ onManageFees?: (studentId: string) => void
   const [notice, setNotice] = useState('');
   const [blocked, setBlocked] = useState<{ id: string; name: string; message: string } | null>(null);
   const [removing, setRemoving] = useState<string | null>(null);
+  const [batchChoice, setBatchChoice] = useState('');
+  const [openBatches, setOpenBatches] = useState<BatchOverviewRow[]>([]);
 
   const removeStudent = async (s: Student) => {
     const db = getSupabaseClient();
@@ -67,19 +70,40 @@ export const StudentsView: React.FC<{ onManageFees?: (studentId: string) => void
 
   useEffect(() => { void loadStudents(); }, [loadStudents]);
 
+  // Batches a student can be placed in right away (planned or ongoing, nearest start first).
+  useEffect(() => {
+    if (!modalOpen || !canManage) return;
+    feesService.overview({}).then((all) => {
+      setOpenBatches(all.filter((b) => b.status === 'planned' || b.status === 'ongoing')
+        .sort((a, b) => (a.start_date || '9999').localeCompare(b.start_date || '9999')));
+    }).catch(() => setOpenBatches([]));
+  }, [modalOpen, canManage]);
+
   const addStudent = async (event: React.FormEvent) => {
     event.preventDefault();
     if (!canManage || !user || !name.trim() || !phone.trim()) return;
     const client = getSupabaseClient();
     if (!client) return;
     setSaving(true); setError('');
-    const { error: insertError } = await client.from('students').insert([{
+    const { data: created, error: insertError } = await client.from('students').insert([{
       full_name: name.trim(), phone: phone.trim(), email: email.trim() || null,
       whatsapp: whatsapp.trim() || null, created_by: user.id,
-    }]);
+    }]).select('id').single();
+    if (insertError || !created) { setSaving(false); setError(insertError?.message || 'Could not save the student.'); return; }
+    if (batchChoice) {
+      try {
+        await feesService.assignToBatch(created.id, batchChoice);
+      } catch (e) {
+        // The student is saved; only the batch step failed. Say so, so nothing is silently lost.
+        setSaving(false);
+        setError(`${name.trim()} was saved, but could not be placed in the batch: ${(e as Error).message}. Use “Students not in a batch yet” on Batch Fees to assign them.`);
+        setName(''); setPhone(''); setEmail(''); setWhatsapp(''); setBatchChoice('');
+        await loadStudents();
+        return;
+      }
+    }
     setSaving(false);
-    if (insertError) { setError(insertError.message); return; }
-    setModalOpen(false); setName(''); setPhone(''); setEmail(''); setWhatsapp('');
+    setModalOpen(false); setName(''); setPhone(''); setEmail(''); setWhatsapp(''); setBatchChoice('');
     await loadStudents();
   };
 
@@ -109,7 +133,7 @@ export const StudentsView: React.FC<{ onManageFees?: (studentId: string) => void
       {loading ? <p className="p-10 text-center text-sm text-slate-500">Loading student records…</p> : !error && visible.length === 0 ? <p className="p-10 text-center text-sm text-slate-500">No student records found. Add the first student to get started.</p> : !error && <div className="overflow-x-auto"><table className="w-full text-left text-sm"><thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500"><tr><th className="px-5 py-3">Student</th><th className="px-5 py-3">Contact</th><th className="px-5 py-3">Admission date</th><th className="px-5 py-3">Status</th>{canManage && <th className="px-5 py-3 text-right">Actions</th>}</tr></thead><tbody className="divide-y divide-slate-100">{visible.map(s => <tr key={s.id} className="hover:bg-slate-50"><td className="px-5 py-4"><p className="font-semibold text-slate-900">{s.full_name}</p><p className="text-xs text-slate-400">{s.student_code || 'Student ID pending'}</p></td><td className="px-5 py-4"><p>{s.phone}</p><p className="text-xs text-slate-400">{s.email || s.whatsapp || '—'}</p></td><td className="px-5 py-4 text-slate-600">{s.admission_date ? new Date(s.admission_date).toLocaleDateString() : '—'}</td><td className="px-5 py-4"><span className="rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-medium capitalize text-emerald-700">{s.status}</span></td>{canManage && <td className="px-5 py-4 text-right whitespace-nowrap">{onManageFees && <button type="button" onClick={() => onManageFees(s.id)} className="rounded-md border border-teal-200 bg-teal-50 px-3 py-1.5 text-xs font-semibold text-teal-800 hover:bg-teal-100 cursor-pointer">Manage fees</button>}<button type="button" onClick={() => void removeStudent(s)} disabled={removing === s.id} className="ml-2 rounded-md border border-rose-200 bg-white px-3 py-1.5 text-xs font-semibold text-rose-700 hover:bg-rose-50 cursor-pointer disabled:opacity-50">{removing === s.id ? 'Deleting…' : 'Delete'}</button></td>}</tr>)}</tbody></table></div>}
     </section>
     <Modal isOpen={modalOpen} onClose={() => setModalOpen(false)} title="Add student" subtitle="Create an internal student record" maxWidth="2xl">
-      <form onSubmit={addStudent} className="space-y-4"><div><label className="mb-1 block text-sm font-medium">Full name *</label><input required value={name} onChange={e=>setName(e.target.value)} className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"/></div><div className="grid gap-4 sm:grid-cols-2"><div><label className="mb-1 block text-sm font-medium">Phone *</label><input required value={phone} onChange={e=>setPhone(e.target.value)} className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"/></div><div><label className="mb-1 block text-sm font-medium">WhatsApp</label><input value={whatsapp} onChange={e=>setWhatsapp(e.target.value)} className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"/></div></div><div><label className="mb-1 block text-sm font-medium">Email</label><input type="email" value={email} onChange={e=>setEmail(e.target.value)} className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"/></div><div className="flex justify-end gap-2 border-t border-slate-100 pt-4"><button type="button" onClick={()=>setModalOpen(false)} className="rounded-lg border border-slate-200 px-4 py-2 text-sm">Cancel</button><button disabled={saving} className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">{saving ? 'Saving…' : 'Save student'}</button></div></form>
+      <form onSubmit={addStudent} className="space-y-4"><div><label className="mb-1 block text-sm font-medium">Full name *</label><input required value={name} onChange={e=>setName(e.target.value)} className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"/></div><div className="grid gap-4 sm:grid-cols-2"><div><label className="mb-1 block text-sm font-medium">Phone *</label><input required value={phone} onChange={e=>setPhone(e.target.value)} className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"/></div><div><label className="mb-1 block text-sm font-medium">WhatsApp</label><input value={whatsapp} onChange={e=>setWhatsapp(e.target.value)} className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"/></div></div><div><label className="mb-1 block text-sm font-medium">Email</label><input type="email" value={email} onChange={e=>setEmail(e.target.value)} className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"/></div><div><label className="mb-1 block text-sm font-medium" htmlFor="student-batch">Batch</label><select id="student-batch" value={batchChoice} onChange={e=>setBatchChoice(e.target.value)} className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"><option value="">Not in a batch yet</option>{openBatches.map(b=><option key={b.batch_id} value={b.batch_id}>{b.name} · {MODE_LABEL[b.delivery_mode]} · {monthLabel(b.start_date)}{b.seats_left!==null?` · ${b.seats_left} seats left`:''}</option>)}</select><p className="mt-1 text-[11px] text-slate-400">Pick the batch now and the student's fees will show there straight away.</p></div><div className="flex justify-end gap-2 border-t border-slate-100 pt-4"><button type="button" onClick={()=>setModalOpen(false)} className="rounded-lg border border-slate-200 px-4 py-2 text-sm">Cancel</button><button disabled={saving} className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">{saving ? 'Saving…' : 'Save student'}</button></div></form>
     </Modal>
   </div>;
 };
