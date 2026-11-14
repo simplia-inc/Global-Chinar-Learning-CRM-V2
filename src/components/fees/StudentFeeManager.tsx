@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Wallet, Plus, Trash2, Info } from 'lucide-react';
 import { Modal } from '../common/Modal';
-import { feesService, money, fmtDate, MODE_LABEL, type StudentFeeDetail, type StudentFeeRow, type FeeStatus, type PaymentMethod } from '../../services/feesService';
+import { feesService, money, fmtDate, monthLabel, MODE_LABEL, type BatchOverviewRow, type StudentFeeDetail, type StudentFeeRow, type FeeStatus, type PaymentMethod } from '../../services/feesService';
 
 const METHODS: Array<{ v: PaymentMethod; l: string }> = [
   { v: 'cash', l: 'Cash' }, { v: 'upi', l: 'UPI' }, { v: 'bank_transfer', l: 'Bank transfer' }, { v: 'card', l: 'Card' }, { v: 'other', l: 'Other' },
@@ -32,6 +32,7 @@ export const StudentFeeManager: React.FC<Props> = ({ student, courses, onClose, 
   const [payAmt, setPayAmt] = useState(''); const [method, setMethod] = useState<PaymentMethod>('upi'); const [ref, setRef] = useState('');
   const [when, setWhen] = useState(nowLocal()); const [payNote, setPayNote] = useState('');
   const [revId, setRevId] = useState<string | null>(null); const [reason, setReason] = useState('');
+  const [batchOptions, setBatchOptions] = useState<BatchOverviewRow[]>([]); const [batchPick, setBatchPick] = useState('');
 
   const load = useCallback(async () => {
     if (!student) return;
@@ -42,6 +43,14 @@ export const StudentFeeManager: React.FC<Props> = ({ student, courses, onClose, 
       setTotal(x.account && x.account.total_fee > 0 ? String(x.account.total_fee) : '');
       setDiscount(String(x.account?.discount_amount ?? 0)); setNotes(x.account?.notes || '');
     } catch (e) { setErr((e as Error).message); } finally { setLoading(false); }
+  }, [student]);
+
+  // Open batches the student can be placed in from here (planned or ongoing, nearest start first).
+  useEffect(() => {
+    if (!student) return;
+    feesService.overview({}).then((all) => setBatchOptions(
+      all.filter((b) => b.status === 'planned' || b.status === 'ongoing').sort((a, b) => (a.start_date || '9999').localeCompare(b.start_date || '9999')),
+    )).catch(() => setBatchOptions([]));
   }, [student]);
 
   useEffect(() => { setMsg(null); setRevId(null); setReason(''); setInstAmt(''); setInstDue(''); setInstNote(''); setPayAmt(''); setRef(''); setPayNote(''); setWhen(nowLocal()); setD(null); void load(); }, [load]);
@@ -73,6 +82,25 @@ export const StudentFeeManager: React.FC<Props> = ({ student, courses, onClose, 
             <div className="p-3 rounded-lg bg-rose-50"><div className="text-[11px] text-rose-400">Pending</div><div className="text-lg font-bold text-rose-600">{money(pending)}</div></div>
             <div className="p-3 rounded-lg bg-slate-50"><div className="text-[11px] text-slate-400">Status</div><div className={`text-lg font-bold ${STATUS_CLS[status]}`}>{STATUS_TXT[status]}</div></div>
           </div>
+
+          <section>
+            <h3 className="font-semibold text-slate-900">Batch</h3>
+            {d.enrollments.length > 0 ? (
+              <p className="mt-1 text-xs text-slate-600">Enrolled in <span className="font-semibold text-slate-900">{d.enrollments.map((e) => `${e.batch_name} (${MODE_LABEL[e.delivery_mode]})`).join(', ')}</span>. Fees and payments show under that batch.</p>
+            ) : (
+              <div className="mt-2 flex flex-wrap items-center gap-2">
+                <select aria-label="Batch" value={batchPick} onChange={(e) => setBatchPick(e.target.value)} className={`${box} max-w-md`}>
+                  <option value="">{batchOptions.length ? 'Choose a batch…' : 'No open batch yet. Create one under Batches.'}</option>
+                  {batchOptions.map((b) => (
+                    <option key={b.batch_id} value={b.batch_id}>{b.name} · {MODE_LABEL[b.delivery_mode]} · {monthLabel(b.start_date)}{b.seats_left !== null ? ` · ${b.seats_left} seats left` : ''}</option>
+                  ))}
+                </select>
+                <button type="button" disabled={busy || !batchPick}
+                  onClick={() => void run(() => feesService.assignToBatch(student.student_id, batchPick), 'Student placed in the batch. Fees and payments now show there.', () => setBatchPick(''))}
+                  className="px-4 py-2 bg-slate-900 text-white font-semibold rounded-lg text-sm disabled:opacity-50 cursor-pointer">Place in batch</button>
+              </div>
+            )}
+          </section>
 
           <section>
             <h3 className="font-semibold text-slate-900">Fee details</h3>
